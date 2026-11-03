@@ -42,7 +42,7 @@ window.ISLAND_DATA = {
     // 在線感：看到其他夥伴的匿名小人，並顯示「現在有 N 位夥伴在線」。只傳暱稱與島上位置，不傳會員編號。
     // firebaseUrl 留空 = 只能看到同一個瀏覽器的其他分頁（示範用）；填 Firebase Realtime Database 的網址 = 所有夥伴互相看得到，
     // 資料庫規則見 docs/presence-rules.json。room 可以分隊伍（不同 room 互相看不到）。
-    presence: { enabled: true, firebaseUrl: '', room: 'main' },
+    presence: { enabled: true, firebaseUrl: 'https://essence-island-default-rtdb.asia-southeast1.firebasedatabase.app', room: 'main' },
     // 夥伴的故事：串接團隊工具站的 /api/content（取 sharers），一次顯示 pageSize 則，捲到底再載入。
     // 這個 API 需要登入，而且不允許其他網域讀取：從別的網址（例如 github.io）連會失敗，頁面會改成讓使用者匯入自己的資料。
     // 要即時連線，就把本站放在同一個網域下，並把 endpoint 改成 '/api/content'。repo 裡不放任何真實故事。
