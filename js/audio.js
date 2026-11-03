@@ -127,6 +127,35 @@
       if (wantOn) { started = true; play(); } else stop();
       return wantOn;
     },
+    // 短音效（點擊、翻牌、配對、買東西、擺放、勝利…）。跟背景音樂共用開關。
+    sfx(name) {
+      if (!wantOn) return;
+      try { if (!ac) setup(); } catch (e) { return; }
+      if (ac.state === 'suspended') ac.resume();
+      if (ac.state !== 'running') return;
+      const t0 = ac.currentTime + 0.01;
+      const tone = (dt, f, dur, type, vol, to) => {
+        const o = ac.createOscillator(), e = ac.createGain(), t = t0 + dt;
+        o.type = type || 'sine'; o.frequency.setValueAtTime(f, t);
+        if (to) o.frequency.exponentialRampToValueAtTime(to, t + dur);
+        e.gain.setValueAtTime(0.0001, t);
+        e.gain.linearRampToValueAtTime(vol || 0.08, t + 0.008);
+        e.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+        o.connect(e); e.connect(ac.destination);
+        o.start(t); o.stop(t + dur + 0.05);
+      };
+      switch (name) {
+        case 'click': tone(0, 660, 0.06, 'triangle', 0.05); break;
+        case 'flip': tone(0, 520, 0.09, 'triangle', 0.06, 760); break;
+        case 'match': tone(0, 784, 0.12, 'triangle', 0.07); tone(0.09, 988, 0.2, 'triangle', 0.07); break;
+        case 'miss': tone(0, 240, 0.2, 'sawtooth', 0.035, 150); break;
+        case 'coin': tone(0, 988, 0.07, 'square', 0.035); tone(0.07, 1319, 0.22, 'square', 0.035); break;
+        case 'place': tone(0, 300, 0.12, 'sine', 0.09, 180); tone(0.05, 520, 0.1, 'triangle', 0.05); break;
+        case 'pop': tone(0, 700, 0.1, 'sine', 0.07, 1150); break;
+        case 'win': [523, 659, 784, 1047].forEach((f, i) => tone(i * 0.11, f, 0.28, 'triangle', 0.07)); break;
+        default: break;
+      }
+    },
     // 完成學習站時的三音鈴聲
     chime() {
       if (!wantOn || !ac || ac.state !== 'running') return;

@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="css/oil.css">
   <link rel="stylesheet" href="css/stories.css?v=1">
+  <link rel="stylesheet" href="css/life.css?v=1">
 </head>
 <body>
 
@@ -60,6 +61,7 @@
             <span class="bar"><i id="hudProg"></i></span>
           </div>
           <div class="chip"><span class="chip-ico">📅</span><b id="hudDays">0 / 30 天</b></div>
+          <div class="chip chip-act" id="hudWeather" role="button" tabindex="0" title="點一下換天氣" aria-label="天氣與時間，點一下換天氣"><b id="hudWeatherTxt">☀️ 晴天 · 白天</b></div>
         </div>
 
         <div class="zoom" aria-label="縮放">
@@ -68,7 +70,8 @@
           <button type="button" id="zoomReset" aria-label="重置視角">⌂</button>
           <button type="button" id="musicBtn" aria-label="背景音樂" aria-pressed="true" title="背景音樂">🎵</button>
         </div>
-        <p class="hint">拖曳移動 · 滾輪縮放 · 點建築開始學習</p>
+        <p class="hint">拖曳移動 · 滾輪縮放 · 點建築開始學習 · 點居民和小動物聊天</p>
+        <div class="placebar" id="placeBar" hidden><span id="placeTxt"></span><button type="button" class="btn btn-primary" id="placeDone">完成</button></div>
       </div>
 
       <aside class="panel" id="panel">
@@ -108,6 +111,10 @@
   <script src="js/audio.js?v=5"></script>
   <script src="js/plan.js?v=5"></script>
   <script src="js/stories.js?v=6"></script>
-  <script src="js/app.js?v=6"></script>
+  <script src="js/quest.js?v=7"></script>
+  <script src="js/life.js?v=7"></script>
+  <script src="js/shop.js?v=7"></script>
+  <script src="js/play.js?v=7"></script>
+  <script src="js/app.js?v=7"></script>
 </body>
 </html>

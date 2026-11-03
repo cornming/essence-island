@@ -1,0 +1,86 @@
+/* 島上生活：天氣晶片、擺放列、市集、每日任務與徽章、遊樂亭 */
+.toast { max-width: min(520px, 92vw); text-align: center; line-height: 1.5; }
+.chip-act { pointer-events: auto; cursor: pointer; border: 0; }
+.chip-act:hover { background: #fff; }
+.chip-act:focus-visible { outline: 2px solid var(--sea); outline-offset: 2px; }
+
+.placebar {
+  position: absolute; left: 12px; right: 12px; bottom: 36px; display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 10px 12px 10px 16px; border-radius: 16px; background: rgba(31, 59, 77, .94); color: #fff; font-size: 14px; box-shadow: 0 6px 20px rgba(0, 0, 0, .25);
+}
+.placebar[hidden] { display: none; }
+.placebar .btn { flex: none; padding: 6px 16px; }
+
+/* 市集 */
+.sh-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.sh-wallet { font-size: 14px; color: var(--sea-deep); background: var(--sea-soft); border-radius: 999px; padding: 3px 12px; }
+.sh-grid { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); margin-top: 6px; }
+.sh-card { position: relative; display: grid; gap: 4px; align-content: start; padding: 12px; border: 1px solid var(--line); border-radius: 14px; background: #fff; text-align: center; }
+.sh-card b { font-family: var(--serif); font-size: 15px; }
+.sh-card small { font-size: 12px; color: var(--muted); line-height: 1.5; min-height: 36px; }
+.sh-ico { position: relative; font-size: 38px; line-height: 1.2; }
+.sh-ico em { position: absolute; top: -2px; right: -2px; font-style: normal; font-size: 11px; background: var(--sea-soft); color: var(--sea-deep); border-radius: 999px; padding: 1px 7px; }
+.sh-foot { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-top: 4px; }
+.sh-price { font-size: 13px; font-weight: 700; color: var(--sea-deep); }
+.sh-foot .btn { padding: 5px 12px; font-size: 13px; }
+
+/* 每日任務 */
+.oilday { padding: 14px 16px; border-radius: 16px; background: linear-gradient(135deg, #f1f8f2, #e3f1f5); display: grid; gap: 4px; }
+.oilday small { font-size: 11px; letter-spacing: .14em; color: var(--sea-deep); font-weight: 700; }
+.oilday h4 { margin: 0; font-family: var(--serif); font-size: 20px; }
+.oilday h4 em { font-size: 13px; font-style: normal; color: var(--muted); }
+.oilday p { margin: 2px 0; font-size: 14px; }
+.oilday .btn { justify-self: start; margin-top: 6px; }
+.qh { margin: 18px 0 8px; font-family: var(--serif); font-size: 16px; font-weight: 500; }
+.qh small { font-family: inherit; font-size: 12px; color: var(--muted); margin-left: 6px; }
+.qlist { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.qrow { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
+.qrow.is-ok { border-color: var(--gold); background: #fffaf0; }
+.qrow.is-got { background: #f1f8f2; border-color: #cfe5d3; }
+.qmain { display: grid; gap: 4px; flex: 1; min-width: 0; font-size: 14px; }
+.qmain small { font-size: 12px; color: var(--muted); }
+.qbar { display: block; height: 6px; border-radius: 3px; background: #ece8d8; overflow: hidden; }
+.qbar i { display: block; height: 100%; background: var(--gold); border-radius: 3px; }
+.qrow.is-got .qbar i { background: var(--ok); }
+.qbonus { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 10px; padding: 10px 12px; border: 1px dashed var(--gold); border-radius: 12px; font-size: 14px; }
+.qbonus.is-got { border-color: #cfe5d3; color: var(--muted); }
+.qrow .btn, .qbonus .btn { flex: none; padding: 6px 14px; font-size: 13px; }
+
+/* 徽章牆 */
+.achs { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+.ach { display: grid; gap: 2px; justify-items: center; text-align: center; padding: 12px 8px; border: 1px solid var(--line); border-radius: 14px; background: #f6f4ea; color: var(--muted); }
+.ach b { font-size: 14px; font-family: var(--serif); font-weight: 500; }
+.ach small { font-size: 11px; line-height: 1.45; }
+.ach-ico { font-size: 28px; filter: grayscale(.2); }
+.ach.is-on { background: #fffaf0; border-color: var(--gold); color: var(--ink); }
+.ach.is-on .ach-ico { filter: none; }
+
+/* 遊樂亭 */
+.pg-lead { margin: 4px 0 12px; font-size: 14px; color: #44606f; }
+.pg-menu { display: grid; gap: 10px; }
+.pg-game { display: flex; align-items: center; gap: 14px; padding: 14px; border: 1px solid var(--line); border-radius: 16px; background: #fff; }
+.pg-ico { flex: none; width: 52px; height: 52px; display: grid; place-items: center; font-size: 28px; border-radius: 14px; background: var(--sea-soft); }
+.pg-main { flex: 1; display: grid; gap: 2px; min-width: 0; }
+.pg-main small { font-size: 13px; color: #44606f; }
+.pg-main em { font-size: 12px; font-style: normal; color: var(--muted); }
+.pg-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 6px 0; }
+.pg-card { min-height: 84px; padding: 8px 6px; border-radius: 12px; border: 1px solid var(--line); background: linear-gradient(135deg, #e3f1f5, #d6ecd8); font-size: 22px; line-height: 1.3; }
+.pg-card.is-open, .pg-card.is-done { background: #fff; font-size: 13px; font-weight: 600; color: var(--ink); }
+.pg-card.is-open.is-name, .pg-card.is-done.is-name { font-family: var(--serif); font-size: 16px; }
+.pg-card.is-done { border-color: var(--ok); background: #f1f8f2; }
+.pg-q { font-size: 16px; line-height: 1.7; margin: 8px 0 2px; }
+.pg-tags { margin-bottom: 4px; }
+.pg-opts { grid-template-columns: repeat(2, 1fr); }
+.pg-timer { height: 8px; border-radius: 4px; background: #ece8d8; overflow: hidden; margin: 6px 0 10px; }
+.pg-timer i { display: block; height: 100%; width: 100%; background: var(--coral); border-radius: 4px; }
+.pg-result { text-align: center; padding: 18px 0; }
+.pg-big { font-family: var(--serif); font-size: 40px; margin-bottom: 6px; }
+.pg-gain { font-weight: 700; color: var(--sea-deep); }
+.pg-result .st-actions { justify-content: center; }
+.tool h3 small { font-family: inherit; font-size: 13px; color: var(--muted); margin-left: 6px; }
+
+@media (max-width: 560px) {
+  .pg-grid { grid-template-columns: repeat(3, 1fr); }
+  .pg-opts { grid-template-columns: 1fr; }
+  .placebar { font-size: 13px; }
+}

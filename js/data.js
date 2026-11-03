@@ -87,6 +87,7 @@ window.ISLAND_DATA = {
     { id: 'know', name: '認識精油', en: 'KNOW THE OILS' },
     { id: 'use', name: '學會使用', en: 'USE THEM DAILY' },
     { id: 'share', name: '開始分享', en: 'SHARE & GROW' },
+    { id: 'life', name: '島嶼生活', en: 'ISLAND LIFE' },
   ],
 
   needs: ['放鬆', '提神', '清新', '睡前', '專注', '居家', '按摩', '保養'],
@@ -213,6 +214,62 @@ window.ISLAND_DATA = {
     '身體不舒服請就醫，精油不能取代醫療。',
   ],
 
+  /* ---------- 水滴市集商品 ----------
+   * kind：plant 植物 / deco 裝飾 / pet 小動物；size：島上畫的 emoji 大小；glow：夜晚會發光
+   * 擺放時一格放一件，只能放在沒被建築、花圃或樹佔用的草地上。 */
+  shop: [
+    { id: 'sunflower', name: '向日葵', emoji: '🌻', kind: 'plant', price: 12, size: 26, desc: '永遠朝著太陽，看了心情就好。' },
+    { id: 'tulip', name: '鬱金香', emoji: '🌷', kind: 'plant', price: 12, size: 24, desc: '小小一朵，把島上染上一點粉色。' },
+    { id: 'daisy', name: '小雛菊', emoji: '🌼', kind: 'plant', price: 10, size: 22, desc: '洋甘菊的親戚，風吹過會輕輕搖。' },
+    { id: 'cactus', name: '仙人掌', emoji: '🌵', kind: 'plant', price: 15, size: 26, desc: '不用澆水的好夥伴。' },
+    { id: 'pot', name: '香草盆栽', emoji: '🪴', kind: 'plant', price: 18, size: 26, desc: '迷迭香、薄荷，都想種一盆。' },
+    { id: 'mushroom', name: '小蘑菇', emoji: '🍄', kind: 'plant', price: 10, size: 22, desc: '雨後冒出來的驚喜。' },
+    { id: 'pine', name: '小松樹', emoji: '🌲', kind: 'plant', price: 25, size: 42, desc: '雪松和松針的香氣，想像得到嗎？' },
+    { id: 'tree', name: '大樹', emoji: '🌳', kind: 'plant', price: 30, size: 44, desc: '樹下乘涼，最適合發呆。' },
+    { id: 'palm', name: '椰子樹', emoji: '🌴', kind: 'plant', price: 28, size: 44, desc: '度假感立刻加分。' },
+    { id: 'lamp', name: '路燈', emoji: '', kind: 'deco', price: 30, size: 0, glow: true, desc: '天黑後會亮起溫暖的燈。' },
+    { id: 'lantern', name: '紅燈籠', emoji: '🏮', kind: 'deco', price: 22, size: 28, glow: true, desc: '夜裡發出柔柔的光。' },
+    { id: 'bench', name: '長椅', emoji: '🪑', kind: 'deco', price: 25, size: 26, desc: '坐下來，聞聞空氣中的香味。' },
+    { id: 'tent', name: '露營帳篷', emoji: '⛺', kind: 'deco', price: 40, size: 34, desc: '週末在島上露營。' },
+    { id: 'basket', name: '野餐籃', emoji: '🧺', kind: 'deco', price: 15, size: 22, desc: '帶上檸檬汁和三明治。' },
+    { id: 'chime', name: '風鈴', emoji: '🎐', kind: 'deco', price: 18, size: 26, desc: '微風吹來，叮叮噹噹。' },
+    { id: 'fountain', name: '小噴泉', emoji: '⛲', kind: 'deco', price: 60, size: 40, desc: '島上的新地標。' },
+    { id: 'statue', name: '石像', emoji: '🗿', kind: 'deco', price: 35, size: 32, desc: '表情很酷，其實很溫柔。' },
+    { id: 'cat', name: '貓咪', emoji: '🐱', kind: 'pet', price: 45, size: 22, desc: '會在原地晃來晃去。摸摸牠！' },
+    { id: 'dog', name: '小狗', emoji: '🐶', kind: 'pet', price: 45, size: 22, desc: '精力充沛，看到你就搖尾巴。' },
+    { id: 'rabbit', name: '兔子', emoji: '🐰', kind: 'pet', price: 40, size: 20, desc: '耳朵動一動，在草地上蹦蹦跳。' },
+    { id: 'sheep', name: '小羊', emoji: '🐑', kind: 'pet', price: 50, size: 24, desc: '毛茸茸，會慢慢散步。' },
+    { id: 'duck', name: '鴨子', emoji: '🦆', kind: 'pet', price: 35, size: 20, desc: '搖搖擺擺走過來。' },
+    { id: 'turtle', name: '烏龜', emoji: '🐢', kind: 'pet', price: 40, size: 20, desc: '慢慢來，比較快。' },
+  ],
+
+  /* ---------- 島民（會在道路上散步，點他們聊天；每人每天第一次聊天 +1 水滴） ---------- */
+  villagers: [
+    { id: 'leaf', name: '小葉', role: '園丁', hair: '#6b4a2b', shirt: '#6fbf73', start: { x: 5, y: 6 } },
+    { id: 'aroma', name: '阿香', role: '芳療師', hair: '#2f2a3b', shirt: '#b08be0', start: { x: 9, y: 6 } },
+    { id: 'shell', name: '海螺', role: '水手', hair: '#c79a4b', shirt: '#4fa0d6', start: { x: 7, y: 9 } },
+  ],
+  chat: [
+    '精油用在皮膚上，一定要先用基底油稀釋喔。',
+    '第一次用新的精油，先在手臂內側做貼膚測試，等 24 小時。',
+    '1 滴精油大約是 0.05 ml，10 ml 的滾珠瓶 1% 只要 2 滴。',
+    '柑橘類精油塗在皮膚上後，數小時內要避開陽光直曬。',
+    '擴香不用開整天，30 分鐘到 1 小時就很夠了，記得讓空氣流通。',
+    '家裡有貓咪的話，擴香時要留出口，讓牠可以離開房間。',
+    '薰衣草是新手最友善的一款，從它開始準備不會錯。',
+    '胡椒薄荷氣味很強，從 1 滴開始就好，也不要靠近眼睛。',
+    '精油要放在陰涼避光的地方，用完記得蓋緊。',
+    '基底油開封後，半年到一年內用完比較新鮮。',
+    '分享的時候說「我用起來覺得放鬆」，比「保證有效」更讓人安心。',
+    '今天天氣真好，適合擴香一點清爽的柑橘味。',
+    '聽說在島上走一走，心情也會跟著變好呢。',
+    '我昨天做了一瓶萬用膏，隔水加熱的時候整個廚房都是香味。',
+    '睡前一小時開始擴香，入睡前記得關掉。',
+    '身體不舒服的時候，請先看醫生，精油不能取代醫療。',
+    '想不到要用哪一瓶？先閉上眼睛，聞聞看哪一瓶讓你最放鬆。',
+    '有空去市集逛逛吧，我剛看到有人在賣小松樹。',
+  ],
+
   /* ---------- 建築（學習站） ----------
    * order：新手路線順序；after：要先完成哪一站才會解鎖；decor：完成後在島上開出的花圃
    * style：貼圖載入失敗時，退回程式繪製的外觀 */
@@ -223,6 +280,20 @@ window.ISLAND_DATA = {
       summary: '看看你走到哪了：進度、最愛的精油，還有自己的筆記。',
       style: { w: 0.7, d: 0.7, h: 40, wall: '#f7ead2', roof: '#c4604a', roofType: 'hip', roofH: 20,
         win: { cols: 2, rows: 1, color: '#9fd6ef' }, chimney: true, door: '#8a5a3a' },
+    },
+    {
+      id: 'market', kind: 'market', sprite: 'assets/buildings/market.png', name: '水滴市集', emoji: '🛒',
+      x: 6, y: 3, door: { x: 7, y: 3 }, accent: '#e0a63a', group: 'life',
+      summary: '用水滴買植物、裝飾和小動物，擺到島上，把島布置成你喜歡的樣子。',
+      style: { w: 0.72, d: 0.72, h: 40, wall: '#f3d9a6', roof: '#e9c88a', roofType: 'flat',
+        win: { cols: 2, rows: 1, color: '#9fd6ef' }, awning: ['#e0a63a', '#ffffff'], door: '#8a5a3a', extra: 'crates' },
+    },
+    {
+      id: 'arcade', kind: 'arcade', sprite: 'assets/buildings/arcade.png', name: '遊樂亭', emoji: '🎮',
+      x: 8, y: 3, door: { x: 7, y: 3 }, accent: '#7a6ad8', group: 'life',
+      summary: '三個跟精油有關的小遊戲：香氣配對、稀釋挑戰、香氣猜猜。玩一玩順便複習，還能賺水滴。',
+      style: { w: 0.72, d: 0.72, h: 46, wall: '#e3d9f6', roof: '#7a6ad8', roofType: 'flat',
+        win: { cols: 2, rows: 1, color: '#ffd7f0' }, awning: ['#7a6ad8', '#ffffff'], door: '#4a3a8a' },
     },
     {
       id: 'kit', kind: 'station', order: 1, group: 'know', sprite: 'assets/buildings/kit.png', name: '入門小舖', emoji: '🎁',

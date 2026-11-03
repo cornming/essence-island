@@ -30,6 +30,7 @@
   let canvas, ctx, W = 0, H = 0, dpr = 1;
   let map = [], cols = 0, rows = 0;
   let buildings = [], trees = [], palms = [], sparkles = [];
+  let occ = new Set(); // 被建築、花圃、樹佔用的格子（"x,y"）
   const cam = { cx: 0, cy: 0, base: 1, z: 1 };
 
   /* ---------- 投影與小工具 ---------- */
@@ -104,6 +105,8 @@
     buildings.forEach((b) => { if (b.decor) blocked.add(b.decor.x + ',' + b.decor.y); });
 
     trees = data.trees.filter(([x, y]) => tileAt(x, y) === 'g' && !blocked.has(x + ',' + y));
+    occ = new Set(blocked);
+    trees.forEach(([x, y]) => occ.add(x + ',' + y));
     palms = [];
     for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) {
       if (tileAt(x, y) === 's' && (x * 7 + y * 13) % 5 === 0) palms.push([x, y]);
@@ -134,6 +137,12 @@
   function toWorld(sx, sy) {
     const z = zoom();
     return { x: (sx - W / 2) / z + cam.cx, y: (sy - H / 2) / z + cam.cy };
+  }
+
+  // 螢幕座標 → 草地格子（地面高度 0 的反投影）
+  function toTile(sx, sy) {
+    const w = toWorld(sx, sy), u = w.x / (TW / 2), v = w.y / (TH / 2);
+    return { x: Math.floor((u + v) / 2), y: Math.floor((v - u) / 2) };
   }
 
   function panBy(dx, dy) { cam.cx -= dx / zoom(); cam.cy -= dy / zoom(); }
@@ -532,8 +541,10 @@
     if (v.sim.visible) items.push({ d: v.sim.fx + v.sim.fy + 1.02, f: () => drawSim(v.sim, v.mood, t) });
     (v.decor || []).forEach((d) => items.push({ d: d.x + d.y + 1.01, f: () => drawDecor(d, t) }));
     items.push({ d: 999, f: () => drawBoat(t) });
+    if (v.items) v.items(t).forEach((it) => items.push(it)); // 島上生活：擺設、小動物、居民…
     items.sort((a, b) => a.d - b.d);
     items.forEach((it) => it.f());
+    if (v.over) v.over(t); // 蝴蝶、海鷗、魚…（不參與深度排序）
 
     // 選取 / 滑過標記（貼在建築腳下，放在物件之後才不會被貼圖蓋住）
     const sel = buildings.find((b) => b.id === v.selectedId);
@@ -560,10 +571,19 @@
     });
 
     // 日夜色調
+    const world = ctx.getTransform();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     const na = nightAlpha(v.minutes);
     if (na > 0) { ctx.fillStyle = 'rgba(14,24,70,' + na.toFixed(3) + ')'; ctx.fillRect(0, 0, canvas.width, canvas.height); }
+    // 夜裡的燈光要畫在色調之後，才不會被蓋暗
+    if (v.glow && na > 0.05) { ctx.setTransform(world); v.glow(t, na); ctx.setTransform(1, 0, 0, 1, 0, 0); }
+    if (v.screen) v.screen(t, canvas.width, canvas.height, dpr, na); // 雲、雨、花瓣（螢幕座標，單位是實際像素）
   }
 
-  global.World = { init, resize, render, pick, findPath, panBy, zoomBy, resetView, bubblePos, iso };
+  global.World = {
+    init, resize, render, pick, findPath, panBy, zoomBy, resetView, bubblePos, iso,
+    toWorld, toTile, tileAt, ctx: () => ctx, size: () => ({ cols, rows }), nightAlpha,
+    occupied: (x, y) => occ.has(x + ',' + y),
+    walkable: (x, y) => !!WALKABLE[tileAt(x, y)],
+  };
 })(window);

@@ -16,16 +16,31 @@
   const stations = D.buildings.filter((b) => b.kind === 'station').sort((a, b) => a.order - b.order);
   const oilByName = (n) => D.oils.find((o) => o.name === n);
   const pad = (n) => String(n).padStart(2, '0');
-  const today = () => { const d = new Date(); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); };
+  const ymd = (d) => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+  const today = () => ymd(new Date());
+  const shopById = (id) => D.shop.find((x) => x.id === id);
+  const params = new URLSearchParams(location.search); // ?hour=21 &weather=rain：固定時間或天氣（測試、截圖用）
 
   /* ---------- 存檔 ---------- */
-  const fresh = () => ({ drops: 0, done: {}, days: { n: 0, last: '' }, fav: '', note: '', selectedOnce: false });
+  const fresh = () => ({
+    drops: 0, done: {}, days: { n: 0, last: '' }, fav: '', note: '', selectedOnce: false,
+    inv: {}, placed: [], ach: {}, best: {}, streak: { n: 0, last: '' },
+    daily: { date: '', prog: {}, claimed: {}, bonus: false, played: {}, gameDrops: 0, talked: {} },
+    stats: { earned: 0, bought: 0, games: 0, talks: 0 },
+  });
   let member = '', S = fresh();
 
   function load(id) {
     try {
       const raw = localStorage.getItem(KEY(id));
-      if (raw) return Object.assign(fresh(), JSON.parse(raw));
+      if (raw) {
+        const o = JSON.parse(raw), s = Object.assign(fresh(), o);
+        // 舊存檔沒有的欄位補上預設值（巢狀物件逐欄合併）
+        ['inv', 'ach', 'best', 'streak', 'daily', 'stats'].forEach((k) => { s[k] = Object.assign(fresh()[k], o[k] || {}); });
+        s.placed = Array.isArray(o.placed) ? o.placed.filter((p) => p && shopById(p.id) && Number.isInteger(p.x) && Number.isInteger(p.y)) : [];
+        if (!o.stats) s.stats.earned = o.drops || 0;
+        return s;
+      }
     } catch (e) { /* 私密模式或被封鎖時略過 */ }
     return fresh();
   }
@@ -37,6 +52,63 @@
   const doneCount = () => stations.filter((b) => S.done[b.id]).length;
   const unlocked = (b) => b.kind === 'home' || !b.after || !!S.done[b.after];
   const titleOf = () => TITLES.reduce((t, [n, name]) => (doneCount() >= n ? name : t), TITLES[0][1]);
+
+  /* ---------- 水滴、每日任務、徽章 ---------- */
+  function earn(n) { S.drops += n; S.stats.earned += n; updateHud(); }
+  function spend(n) { S.drops -= n; updateHud(); }
+
+  function rollDaily() {
+    const t = today();
+    if (S.daily.date !== t) S.daily = { date: t, prog: {}, claimed: {}, bonus: false, played: {}, gameDrops: 0, talked: {} };
+  }
+
+  // 任務事件：visit / game / place / talk / buy / checkin / oil
+  function track(ev, n) {
+    rollDaily();
+    S.daily.prog[ev] = (S.daily.prog[ev] || 0) + (n || 1);
+    checkAch(); save();
+    if (L && L.notes) renderNotes();
+  }
+
+  function achCtx() {
+    const kind = (p) => (shopById(p.id) || {}).kind;
+    const have = new Set(Object.keys(S.inv).filter((k) => S.inv[k] > 0).concat(S.placed.map((p) => p.id)));
+    return {
+      done: doneCount(), total: stations.length, hour: new Date().getHours(), kinds: have.size,
+      plants: S.placed.filter((p) => kind(p) === 'plant').length, pets: S.placed.filter((p) => kind(p) === 'pet').length,
+    };
+  }
+
+  function checkAch() {
+    const all = [];
+    for (let got = Quest.evaluate(S, achCtx()); got.length; got = Quest.evaluate(S, achCtx())) { // 賺到水滴可能又解鎖下一個
+      got.forEach((a) => { S.ach[a.id] = today(); earn(Quest.ACH_REWARD); all.push(a); });
+    }
+    if (!all.length) return;
+    toast(all.length === 1 ? '🏅 解鎖徽章「' + all[0].name + '」 +' + Quest.ACH_REWARD + ' 💧'
+      : '🏅 一次解鎖 ' + all.length + ' 個徽章（' + all.slice(0, 3).map((a) => a.name).join('、') + (all.length > 3 ? '…' : '') + '） +' + all.length * Quest.ACH_REWARD + ' 💧', true);
+    Sound.sfx('win'); save();
+  }
+
+  // 今天可以領的任務數（用來在筆記小屋旁提醒）
+  function claimable() {
+    rollDaily();
+    const qs = Quest.pick(today());
+    const n = qs.filter((q) => (S.daily.prog[q.id] || 0) >= q.need && !S.daily.claimed[q.id]).length;
+    return n + (qs.every((q) => S.daily.claimed[q.id]) && !S.daily.bonus ? 1 : 0);
+  }
+
+  // 登入時：連續登入天數與登入獎勵
+  function dailyLogin() {
+    rollDaily();
+    const t = today();
+    if (S.streak.last === t) return;
+    const y = new Date(); y.setDate(y.getDate() - 1);
+    S.streak.n = S.streak.last === ymd(y) ? S.streak.n + 1 : 1; S.streak.last = t;
+    const bonus = Math.min(S.streak.n, 7);
+    earn(bonus);
+    setTimeout(() => toast('每日登入 +' + bonus + ' 💧（連續 ' + S.streak.n + ' 天）', true), 900);
+  }
 
   /* ---------- 小人 ---------- */
   const sim = { fx: D.start.x, fy: D.start.y, path: [], pi: 0, moving: false, visible: true, sleeping: false, mode: 'idle', target: null };
@@ -68,7 +140,10 @@
   function arrive() {
     const b = sim.target;
     sim.moving = false; sim.mode = 'idle'; sim.target = null;
-    if (b.kind === 'home') openNotes(); else openLesson(b);
+    if (b.kind === 'home') openNotes();
+    else if (b.kind === 'market') openShop();
+    else if (b.kind === 'arcade') openArcade();
+    else openLesson(b);
   }
 
   function update(dt) {
@@ -86,20 +161,27 @@
   }
 
   /* ---------- 面板 ---------- */
+  const SPECIAL = {
+    home: { sub: '進度、任務與徽章', head: '我的進度', go: '走進筆記小屋' },
+    market: { sub: '買植物、裝飾、小動物', head: '島嶼生活', go: '逛逛市集' },
+    arcade: { sub: '三款精油小遊戲', head: '島嶼生活', go: '去玩遊戲' },
+  };
+
   function stationRow(b) {
-    const locked = !unlocked(b), done = !!S.done[b.id];
-    const side = b.kind === 'home' ? '筆記' : (done ? '✓ 完成' : (locked ? '🔒' : '+' + C.reward + ' 💧'));
+    const locked = !unlocked(b), done = !!S.done[b.id], sp = SPECIAL[b.kind];
+    const n = b.kind === 'home' ? claimable() : 0;
+    const side = sp ? (b.kind === 'home' ? (n ? '🎁 ' + n : '筆記') : '前往') : (done ? '✓ 完成' : (locked ? '🔒' : '+' + C.reward + ' 💧'));
     return '<li><button type="button" class="brow' + (b.id === selectedId ? ' is-selected' : '') + (locked ? ' is-locked' : '') + (done ? ' is-done' : '') +
       '" data-act="select" data-id="' + b.id + '"><span class="brow-ico">' + b.emoji + '</span>' +
-      '<span class="brow-main"><b>' + b.name + '</b><small>' + (b.kind === 'home' ? '進度與筆記' : '第 ' + b.order + ' 步') + '</small></span>' +
+      '<span class="brow-main"><b>' + b.name + '</b><small>' + (sp ? sp.sub : '第 ' + b.order + ' 步') + '</small></span>' +
       '<span class="brow-side">' + side + '</span></button></li>';
   }
 
   function detailHtml(b) {
     if (!b) return '<div class="empty">點選島上的建築，查看這一站要學什麼。</div>';
-    const locked = !unlocked(b), done = !!S.done[b.id];
+    const locked = !unlocked(b), done = !!S.done[b.id], sp = SPECIAL[b.kind];
     let btn, extra = '';
-    if (b.kind === 'home') btn = '<button type="button" class="btn btn-primary btn-block" data-act="go" data-id="' + b.id + '">走進筆記小屋</button>';
+    if (sp) btn = '<button type="button" class="btn btn-primary btn-block" data-act="go" data-id="' + b.id + '">' + sp.go + '</button>';
     else if (locked) {
       btn = '<button type="button" class="btn btn-coral btn-block" disabled>尚未解鎖</button>';
       extra = '<p class="lock-note">先完成「' + byId(b.after).name + '」就會解鎖。</p>';
@@ -107,13 +189,13 @@
     const learn = b.learn ? '<ul class="learn">' + b.learn.map((t) => '<li>' + t + '</li>').join('') + '</ul>' : '';
     const reward = b.kind === 'station' ? '<span class="reward">' + (done ? '✓ 已完成' : '完成可得 +' + C.reward + ' 💧') + '</span>' : '';
     return '<div class="detail"><div class="detail-head"><div class="detail-ico">' + b.emoji + '</div>' +
-      '<div><h2>' + b.name + '</h2><small>' + (b.kind === 'home' ? '我的進度' : '第 ' + b.order + ' 步') + '</small></div></div>' +
+      '<div><h2>' + b.name + '</h2><small>' + (sp ? sp.head : '第 ' + b.order + ' 步') + '</small></div></div>' +
       '<p>' + b.summary + '</p>' + learn + reward + '<div style="height:12px"></div>' + btn + extra + '</div>';
   }
 
   function renderStations() {
     const groups = D.groups.map((g) => {
-      const list = stations.filter((b) => b.group === g.id);
+      const list = g.id === 'life' ? D.buildings.filter((b) => b.group === 'life') : stations.filter((b) => b.group === g.id);
       return '<section class="group"><span class="group-en">' + g.en + '</span><h3 class="group-name">' + g.name + '</h3>' +
         '<ul class="blist">' + list.map(stationRow).join('') + '</ul></section>';
     }).join('');
@@ -168,11 +250,16 @@
   let L = null; // 目前課程狀態
 
   function openModal() { $('#modal').hidden = false; document.body.style.overflow = 'hidden'; }
-  function closeModal() { $('#modal').hidden = true; document.body.style.overflow = ''; $('.modal-card').classList.remove('is-wide'); L = null; }
+  function closeModal() {
+    $('#modal').hidden = true; document.body.style.overflow = ''; $('.modal-card').classList.remove('is-wide');
+    $('#mBody').innerHTML = ''; // 清掉內容，遊戲的計時器看到畫面不在了就會停
+    L = null;
+  }
 
   function openLesson(b) {
     L = { b, page: 0, quiz: {}, checks: {}, look: { need: '全部', q: '' }, rtab: 0, dtab: 0 };
     openModal(); renderLesson();
+    track('visit');
   }
 
   function pageOk(p, i) {
@@ -328,6 +415,12 @@
       else if (a === 'dtab') { L.dtab = +el.dataset.i; renderLesson(); }
       else if (a === 'd30') { checkIn(); }
       else if (a === 'reset') { resetProgress(); }
+      else if (a === 'nt') { L.ntab = el.dataset.k; Sound.sfx('click'); renderNotes(); }
+    });
+    // 任務與徽章（筆記小屋）
+    $('#mBody').addEventListener('click', (e) => {
+      const el = e.target.closest('[data-q]');
+      if (el && L && L.notes && Quest.onClick(api, el)) renderNotes();
     });
     $('#mBody').addEventListener('change', (e) => {
       if (!L) return;
@@ -341,58 +434,143 @@
       if (!L) return;
       if (e.target.id === 'lkQ') { L.look.q = e.target.value.trim(); $('#lkList').innerHTML = lookupCards(); }
       else if (e.target.id === 'dlMl' || e.target.id === 'dlPct') dilutionCalc();
-      else if (e.target.id === 'noteArea') { S.note = e.target.value; save(); }
+      else if (e.target.id === 'noteArea') { S.note = e.target.value; save(); checkAch(); }
     });
     $('#mPrev').addEventListener('click', () => { if (L && L.page > 0) { L.page--; renderLesson(); } });
     $('#mNext').addEventListener('click', () => {
       if (!L) return;
-      if (L.notes) return closeModal();
+      if (L.notes || L.single) return closeModal();
       if (L.page < L.b.pages.length - 1) { L.page++; renderLesson(); } else complete(L.b);
     });
     $('#mClose').addEventListener('click', closeModal);
     $('#modal').addEventListener('mousedown', (e) => { if (e.target === $('#modal')) closeModal(); });
-    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('#modal').hidden) closeModal(); });
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape') return;
+      if (!$('#modal').hidden) closeModal(); else if (placing) stopPlacing();
+    });
   }
 
   function checkIn() {
     if (S.days.last === today() || S.days.n >= 30) return;
-    S.days.n++; S.days.last = today(); S.drops += C.dailyReward;
+    S.days.n++; S.days.last = today(); earn(C.dailyReward);
     toast('第 ' + S.days.n + ' 天打卡完成 +' + C.dailyReward + ' 💧', true);
     if (S.days.n === 30) toast('🎉 30 天全部完成！', true);
-    save(); renderLesson(); updateHud();
+    track('checkin'); save(); renderLesson(); updateHud();
   }
 
   function complete(b) {
     if (!S.done[b.id]) {
-      S.done[b.id] = true; S.drops += C.reward;
+      S.done[b.id] = true; earn(C.reward);
       addFx(b, '+' + C.reward + ' 💧', '#2b8aa8');
       Sound.chime();
       toast('完成「' + b.name + '」 +' + C.reward + ' 💧', true);
       stations.filter((x) => x.after === b.id).forEach((x) => toast('解鎖：' + x.name, true));
       if (stations.every((x) => S.done[x.id])) setTimeout(() => toast('🎉 你已經走遍精油島了！', true), 600);
-      save(); renderAll();
+      checkAch(); save(); renderAll();
     }
     closeModal();
   }
 
   /* --- 筆記小屋 --- */
-  function openNotes() {
-    L = { b: byId('home'), notes: true };
-    $('#mIco').textContent = L.b.emoji; $('#mTitle').textContent = L.b.name; $('#mSub').textContent = '我的進度與筆記';
+  function openNotes(tab) {
+    L = { b: byId('home'), notes: true, ntab: tab || 'me' };
+    $('#mIco').textContent = L.b.emoji; $('#mTitle').textContent = L.b.name; $('#mSub').textContent = '我的進度、任務與徽章';
     $('#mDots').innerHTML = '';
-    const fav = D.oils.find((o) => o.id === S.fav);
-    $('#mBody').innerHTML = '<div class="tool"><div class="stats3">' +
-      '<div class="stat"><small>水滴</small><b>' + S.drops + ' 💧</b></div>' +
-      '<div class="stat"><small>稱號</small><b>' + titleOf() + '</b></div>' +
-      '<div class="stat"><small>30 天打卡</small><b>' + S.days.n + ' / 30</b></div></div>' +
-      '<h3>學習徽章</h3><div class="badges">' + stations.map((b) => '<span class="badge' + (S.done[b.id] ? ' is-on' : '') + '">' + b.emoji + ' ' + b.name + '</span>').join('') + '</div>' +
-      '<h3>我最愛的精油</h3><p>' + (fav ? '<span class="tag">' + fav.name + '</span> ' + fav.aroma : '還沒選，到入門小舖選一款吧。') + '</p>' +
-      '<h3>我的筆記</h3><textarea id="noteArea" placeholder="記下喜歡的配方、使用感受、下次想試的組合……" aria-label="我的筆記"></textarea>' +
-      '<button type="button" class="danger-link" data-act="reset">清除我的學習進度</button></div>';
-    $('#noteArea').value = S.note;
+    renderNotes();
     $('#mPrev').hidden = true;
     $('#mNext').textContent = '關閉'; $('#mNext').disabled = false;
     openModal();
+  }
+
+  function renderNotes() {
+    if (!L || !L.notes) return;
+    const n = claimable();
+    const tabs = [['me', '我的進度'], ['daily', '今日任務' + (n ? '（' + n + ' 可領）' : '')], ['badge', '徽章（' + Object.keys(S.ach).length + '/' + Quest.ACH.length + '）']]
+      .map(([k, t]) => '<button type="button" class="pl-step' + (L.ntab === k ? ' is-on' : '') + '" data-act="nt" data-k="' + k + '">' + t + '</button>').join('');
+    let body;
+    if (L.ntab === 'daily') body = Quest.dailyHtml(api);
+    else if (L.ntab === 'badge') body = Quest.badgesHtml(api);
+    else {
+      const fav = D.oils.find((o) => o.id === S.fav);
+      body = '<div class="stats3">' +
+        '<div class="stat"><small>水滴</small><b>' + S.drops + ' 💧</b></div>' +
+        '<div class="stat"><small>稱號</small><b>' + titleOf() + '</b></div>' +
+        '<div class="stat"><small>30 天打卡</small><b>' + S.days.n + ' / 30</b></div></div>' +
+        '<h3>學習進度</h3><div class="badges">' + stations.map((b) => '<span class="badge' + (S.done[b.id] ? ' is-on' : '') + '">' + b.emoji + ' ' + b.name + '</span>').join('') + '</div>' +
+        '<h3>我最愛的精油</h3><p>' + (fav ? '<span class="tag">' + fav.name + '</span> ' + fav.aroma : '還沒選，到入門小舖選一款吧。') + '</p>' +
+        '<h3>我的筆記</h3><textarea id="noteArea" placeholder="記下喜歡的配方、使用感受、下次想試的組合……" aria-label="我的筆記"></textarea>' +
+        '<button type="button" class="danger-link" data-act="reset">清除我的學習進度</button>';
+    }
+    $('#mBody').innerHTML = '<div class="tool"><div class="pl-steps">' + tabs + '</div>' + body + '</div>';
+    if (L.ntab === 'me') $('#noteArea').value = S.note;
+  }
+
+  /* --- 水滴市集 / 遊樂亭 --- */
+  function openSingle(b, sub, rootId) {
+    L = { b, single: true };
+    $('#mIco').textContent = b.emoji; $('#mTitle').textContent = b.name; $('#mSub').textContent = sub;
+    $('#mDots').innerHTML = '';
+    $('#mBody').innerHTML = '<div id="' + rootId + '"></div>';
+    $('.modal-card').classList.add('is-wide');
+    $('#mPrev').hidden = true; $('#mNext').textContent = '關閉'; $('#mNext').disabled = false;
+    openModal();
+  }
+  function openShop() { openSingle(byId('market'), '用水滴布置你的島', 'shopRoot'); Shop.mount($('#shopRoot'), api); Sound.sfx('click'); }
+  function openArcade() { openSingle(byId('arcade'), '小遊戲 · 玩一玩順便複習', 'arcadeRoot'); Play.mount($('#arcadeRoot'), api); Sound.sfx('click'); }
+
+  /* --- 擺放模式：點草地放下背包裡的東西 --- */
+  let placing = null, ghost = null;
+
+  function tileFree(x, y) {
+    return World.tileAt(x, y) === 'g' && !World.occupied(x, y) && !S.placed.some((p) => p.x === x && p.y === y);
+  }
+  function paintPlaceBar() {
+    const it = placing && shopById(placing.id);
+    $('#placeBar').hidden = !it;
+    if (it) $('#placeTxt').textContent = '擺放「' + (it.emoji || '💡') + ' ' + it.name + '」（背包還有 ' + (S.inv[it.id] || 0) + ' 個）：點島上的空草地，綠色格子可以放。';
+  }
+  function startPlacing(id) {
+    if (!(S.inv[id] > 0)) return;
+    closeModal(); placing = { id }; ghost = null; paintPlaceBar();
+    $('#stage').scrollIntoView({ block: 'nearest' }); Sound.sfx('click'); // 手機上島在面板上方，確保看得到要擺的地方
+  }
+  function stopPlacing() { placing = null; ghost = null; paintPlaceBar(); }
+  function placeAt(x, y) {
+    if (!placing) return;
+    if (!tileFree(x, y)) { Sound.sfx('miss'); return toast('這格不能擺，換一塊空的草地'); }
+    const id = placing.id;
+    S.inv[id]--; S.placed.push({ id, x, y });
+    const p = World.iso(x + 0.5, y + 0.5, 30);
+    fx.push({ wx: p.x, wy: p.y, text: '✨', color: '#e5b341', born: now });
+    Sound.sfx('place'); track('place'); save(); afterChange();
+    if (S.inv[id] > 0) paintPlaceBar(); else { stopPlacing(); toast('擺好了！到市集的「島上」分頁可以收回', true); }
+  }
+
+  // 更新水滴、徽章與面板（買賣、擺放、遊戲結算後呼叫）
+  function afterChange() { checkAch(); updateHud(); renderStations(); }
+
+  const api = {
+    S: () => S, D, C, today, earn, spend, toast, save, track, afterChange, startPlacing,
+    sfx: (n) => Sound.sfx(n), catalog: D.shop,
+    refresh: () => { if (L && L.notes) renderNotes(); renderStations(); updateHud(); },
+  };
+
+  /* --- 居民聊天與小動物 --- */
+  function addFxAt(wx, wy, text, color) { fx.push({ wx, wy, text, color, born: now }); }
+
+  function talk(n) {
+    const line = D.chat[Math.floor(Math.random() * D.chat.length)];
+    Life.say(n, line, now); Sound.sfx('pop');
+    rollDaily();
+    if (!S.daily.talked[n.id]) {
+      S.daily.talked[n.id] = true; earn(1);
+      const p = World.iso(n.fx + 0.5, n.fy + 0.5, 56); addFxAt(p.x, p.y, '+1 💧', '#2b8aa8');
+    }
+    S.stats.talks++; track('talk');
+  }
+  function petPlay(pl) {
+    Life.pop(pl, now); Sound.sfx('pop');
+    S.stats.talks++; track('talk');
   }
 
   function resetProgress() {
@@ -409,6 +587,7 @@
     $('#playerName').textContent = id;
     const first = doneCount() === 0 && !S.selectedOnce;
     selectedId = first ? 'kit' : null;
+    dailyLogin(); checkAch(); save();
     renderAll();
     if (first) toast('歡迎來到精油島！先從「入門小舖」開始第一步', true);
     else toast('歡迎回來，' + titleOf() + '！');
@@ -438,9 +617,14 @@
   function bindCanvas(canvas) {
     let drag = null;
     const pos = (e) => { const r = canvas.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
+    const aim = (p) => { // 擺放模式：預覽格子
+      const t = World.toTile(p.x, p.y);
+      ghost = placing ? { x: t.x, y: t.y, id: placing.id, valid: tileFree(t.x, t.y) } : null;
+    };
     canvas.addEventListener('pointerdown', (e) => { canvas.setPointerCapture(e.pointerId); drag = { x: e.clientX, y: e.clientY, moved: false }; });
     canvas.addEventListener('pointermove', (e) => {
       const p = pos(e);
+      if (placing && !drag) { aim(p); canvas.classList.add('is-pointer'); return; }
       if (drag) {
         const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
         if (drag.moved || Math.hypot(dx, dy) > 4) {
@@ -448,19 +632,25 @@
           World.panBy(dx, dy); drag.x = e.clientX; drag.y = e.clientY;
         }
       } else {
-        const b = World.pick(p.x, p.y);
+        const b = World.pick(p.x, p.y), w = World.toWorld(p.x, p.y);
         hoverId = b ? b.id : null;
-        canvas.classList.toggle('is-pointer', !!b);
+        canvas.classList.toggle('is-pointer', !!b || !!Life.pickNpc(w) || !!Life.pickPet(w, now));
       }
     });
     const end = (e) => {
       if (!drag) return;
       const moved = drag.moved; drag = null; canvas.classList.remove('is-drag');
-      if (!moved && e.type === 'pointerup') { const p = pos(e), b = World.pick(p.x, p.y); select(b ? b.id : null); }
+      if (moved || e.type !== 'pointerup') return;
+      const p = pos(e);
+      if (placing) { const t = World.toTile(p.x, p.y); aim(p); return placeAt(t.x, t.y); }
+      const w = World.toWorld(p.x, p.y), npc = Life.pickNpc(w), pet = npc ? null : Life.pickPet(w, now);
+      if (npc) return talk(npc);
+      if (pet) return petPlay(pet);
+      const b = World.pick(p.x, p.y); select(b ? b.id : null);
     };
     canvas.addEventListener('pointerup', end);
     canvas.addEventListener('pointercancel', end);
-    canvas.addEventListener('pointerleave', () => { if (!drag) hoverId = null; });
+    canvas.addEventListener('pointerleave', () => { if (!drag) { hoverId = null; if (placing) ghost = null; } });
     canvas.addEventListener('wheel', (e) => { e.preventDefault(); const p = pos(e); World.zoomBy(e.deltaY < 0 ? 1.12 : 1 / 1.12, p.x, p.y); }, { passive: false });
   }
 
@@ -476,6 +666,10 @@
     $('#zoomIn').addEventListener('click', () => World.zoomBy(1.2));
     $('#zoomOut').addEventListener('click', () => World.zoomBy(1 / 1.2));
     $('#zoomReset').addEventListener('click', () => World.resetView());
+    $('#placeDone').addEventListener('click', stopPlacing);
+    const flip = () => { Life.lockWeather(false); Life.cycleWeather(now); Sound.sfx('click'); paintWeather(true); };
+    $('#hudWeather').addEventListener('click', flip);
+    $('#hudWeather').addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); flip(); } });
 
     // 背景音樂：瀏覽器要求使用者互動後才能出聲，所以第一次點擊 / 按鍵才開始
     Sound.configure(C.bgm);
@@ -484,7 +678,7 @@
       const on = Sound.isOn();
       mb.textContent = on ? '🎵' : '🔇';
       mb.setAttribute('aria-pressed', String(on));
-      mb.title = on ? '關閉背景音樂' : '開啟背景音樂';
+      mb.title = on ? '關閉音樂與音效' : '開啟音樂與音效';
       mb.classList.toggle('is-off', !on);
     };
     mb.addEventListener('click', () => { Sound.toggle(); paintMusic(); });
@@ -494,10 +688,26 @@
     window.addEventListener('beforeunload', save);
   }
 
+  /* ---------- 時間與天氣 ---------- */
+  const hourParam = params.get('hour');
+  const gameMinutes = () => {
+    if (hourParam !== null && hourParam !== '' && !isNaN(+hourParam)) return (+hourParam % 24) * 60;
+    const d = new Date(); return d.getHours() * 60 + d.getMinutes(); // 跟著使用者現在的時間：晚上島上就是晚上
+  };
+  const period = (m) => { const h = m / 60; return h >= 5 && h < 7 ? '清晨' : h >= 7 && h < 17 ? '白天' : h >= 17 && h < 19 ? '黃昏' : '夜晚'; };
+  let weatherTxt = '';
+  function paintWeather(force) {
+    const w = Life.info(), txt = w.icon + ' ' + w.name + ' · ' + period(gameMinutes());
+    if (force || txt !== weatherTxt) { weatherTxt = txt; $('#hudWeatherTxt').textContent = txt; }
+  }
+
   /* ---------- 啟動 ---------- */
   function boot() {
     const canvas = $('#island');
     World.init(canvas, D);
+    Life.init(D, { placed: () => S.placed, ghost: () => ghost, item: shopById });
+    const wp = params.get('weather');
+    if (wp && Life.info(wp)) { Life.setWeather(wp, 0); Life.lockWeather(true); }
     bindCanvas(canvas); bindUi(); bindGate(); bindModal();
     new ResizeObserver(() => World.resize()).observe($('#stage'));
     renderAll();
@@ -510,14 +720,18 @@
     const view = {
       sim, fx,
       get selectedId() { return selectedId; }, get hoverId() { return hoverId; },
-      minutes: 12 * 60, mood: 100, status: statusOf,
+      get minutes() { return gameMinutes(); }, mood: 100, status: statusOf,
       get decor() { return stations.filter((b) => S.done[b.id] && b.decor).map((b) => b.decor); },
+      items: (t) => Life.items(t), over: (t) => Life.over(t), glow: (t, na) => Life.glow(t, na),
+      screen: (t, w, h, dpr) => Life.screen(t, w, h, dpr),
     };
 
-    let prev = performance.now();
+    let prev = performance.now(), wTick = 0;
     function frame(ts) {
       const dt = Math.min(0.25, (ts - prev) / 1000); prev = ts; now = ts / 1000;
       update(dt);
+      Life.update(dt, now, World.nightAlpha(view.minutes));
+      if (now - wTick > 0.5) { wTick = now; paintWeather(); }
       fx = fx.filter((f) => now - f.born < 1.8); view.fx = fx;
       World.render(now, view);
       requestAnimationFrame(frame);
