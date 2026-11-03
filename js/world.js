@@ -27,7 +27,7 @@
   }
   const ready = (src) => { const im = src && imgs[src]; return im && im.complete && im.naturalWidth ? im : null; };
 
-  let canvas, ctx, W = 0, H = 0, dpr = 1;
+  let canvas, ctx, W = 0, H = 0, dpr = 1, dprCap = 2; // dprCap：畫面太卡時由 app.js 往下調
   let map = [], cols = 0, rows = 0;
   let buildings = [], trees = [], palms = [], sparkles = [];
   let occ = new Set(); // 被建築、花圃、樹佔用的格子（"x,y"）
@@ -126,13 +126,39 @@
 
   function resize() {
     const r = canvas.getBoundingClientRect();
-    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    dpr = Math.min(window.devicePixelRatio || 1, dprCap);
     W = Math.max(1, r.width); H = Math.max(1, r.height);
     canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
     cam.base = Math.max(0.4, Math.min(1.6, Math.min(W / 800, H / 520)));
   }
 
   const zoom = () => cam.base * cam.z;
+
+  /* ---------- 快取：把不會變的東西畫一次，之後只貼圖 ---------- */
+  const SC = 2; // 小貼圖的內部解析度倍率
+  // 暫時把所有繪圖函式導向另一張畫布（它們都是用模組裡的 ctx）
+  function paintOn(cc, fn) { const prev = ctx; ctx = cc; try { fn(); } finally { ctx = prev; } }
+  const cache = new Map();
+  function cached(key, w, h, paint) { // w、h 是畫面單位；回傳 { c, w, h }
+    let e = cache.get(key);
+    if (!e) {
+      const c = document.createElement('canvas');
+      c.width = Math.ceil(w * SC); c.height = Math.ceil(h * SC);
+      const cc = c.getContext('2d'); cc.scale(SC, SC);
+      paintOn(cc, () => paint(w, h));
+      e = { c, w, h }; cache.set(key, e);
+    }
+    return e;
+  }
+  // emoji 每次 fillText 都要重新點陣化，很貴；先畫成貼圖，之後用 drawImage
+  function emojiSprite(emoji, size) {
+    const w = Math.ceil(size * 1.5), by = Math.round(w * 0.8);
+    const e = cached('e:' + emoji + ':' + size, w, w, () => {
+      ctx.font = size + 'px ' + EMOJI_FONT; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.fillStyle = '#000';
+      ctx.fillText(emoji, w / 2, by);
+    });
+    return { img: e.c, w: e.w, h: e.h, by };
+  }
 
   function toWorld(sx, sy) {
     const z = zoom();
@@ -261,23 +287,54 @@
       ctx.strokeStyle = 'rgba(255,255,255,' + (a * 0.55).toFixed(2) + ')';
       ctx.beginPath(); ctx.moveTo(p.x - 6, p.y); ctx.lineTo(p.x + 6, p.y); ctx.stroke();
     }
-    // 岸邊淺水光暈
+    // 岸邊淺水光暈：疊加的半透明方塊先畫成一張圖，每幀只調整整體透明度做出呼吸感
     const pulse = 0.34 + Math.sin(t * 1.6) * 0.06;
-    for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) {
-      if (!isLand(x, y)) continue;
-      const e = 0.42;
-      poly([iso(x - e, y - e, -9), iso(x + 1 + e, y - e, -9), iso(x + 1 + e, y + 1 + e, -9), iso(x - e, y + 1 + e, -9)],
-        'rgba(200,244,248,' + pulse.toFixed(2) + ')');
+    const lay = layer('glow', 1, () => {
+      for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) {
+        if (!isLand(x, y)) continue;
+        const e = 0.42;
+        poly([iso(x - e, y - e, -9), iso(x + 1 + e, y - e, -9), iso(x + 1 + e, y + 1 + e, -9), iso(x - e, y + 1 + e, -9)], 'rgba(200,244,248,.4)');
+      }
+    });
+    ctx.globalAlpha = pulse / 0.4; ctx.drawImage(lay.c, lay.x, lay.y, lay.w, lay.h); ctx.globalAlpha = 1;
+  }
+
+  // 整座島的固定範圍（世界座標），地形與光暈的快取都用這個範圍
+  const bounds = () => ({ x: -rows * TW / 2 - 40, y: -10, w: (cols + rows) * TW / 2 + 80, h: (cols + rows) * TH / 2 + 70 });
+  const layers = {};
+  // 世界座標下的快取圖層：解析度 sc 變了（縮放 / 螢幕密度）才重畫
+  function layer(name, sc, paint) {
+    const b = bounds(), L = layers[name] || (layers[name] = { c: document.createElement('canvas'), sc: 0 });
+    if (L.sc !== sc || L.bw !== b.w) {
+      L.c.width = Math.ceil(b.w * sc); L.c.height = Math.ceil(b.h * sc);
+      const cc = L.c.getContext('2d'); cc.setTransform(sc, 0, 0, sc, -b.x * sc, -b.y * sc);
+      paintOn(cc, paint);
+      L.sc = sc; L.bw = b.w;
     }
+    return { c: L.c, x: b.x, y: b.y, w: b.w, h: b.h };
+  }
+
+  function drawTerrain() {
+    const allReady = Object.keys(tileSrc).every((k) => ready(tileSrc[k]));
+    const live = () => { for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) { const type = tileAt(x, y); if (type !== '.') drawTile(x, y, type); } };
+    if (!allReady || P.noCache) { live(); return; } // 貼圖還沒載完就先直接畫，不要把備用畫法存進快取
+    const sc = Math.min(3, Math.max(1, Math.ceil(zoom() * dpr * 2) / 2));
+    const lay = layer('terrain', sc, live);
+    ctx.drawImage(lay.c, lay.x, lay.y, lay.w, lay.h);
   }
 
   /* ---------- 繪製：物件 ---------- */
   function drawTree(x, y) {
-    const p = iso(x + 0.5, y + 0.55, 0);
+    const p = iso(x + 0.5, y + 0.55, 0), sway = ((x * 5 + y * 3) % 5) - 2;
+    const e = cached('tree:' + sway, 44, 56, () => paintTree(22, 46, sway));
+    ctx.drawImage(e.c, p.x - 22, p.y - 46, e.w, e.h);
+  }
+
+  function paintTree(px, py, sway) {
+    const p = { x: px, y: py };
     ctx.fillStyle = 'rgba(0,0,0,.18)';
     ctx.beginPath(); ctx.ellipse(p.x, p.y, 13, 6, 0, 0, 7); ctx.fill();
     ctx.fillStyle = '#7a5733'; ctx.fillRect(p.x - 2.5, p.y - 16, 5, 16);
-    const sway = ((x * 5 + y * 3) % 5) - 2;
     circle(p.x + sway * 0.4, p.y - 28, 13, '#4f9a4a');
     circle(p.x - 8, p.y - 21, 9, '#5aa953');
     circle(p.x + 8, p.y - 22, 9, '#468f44');
@@ -439,29 +496,36 @@
     }
   }
 
+  // 氣泡本體（陰影、外框、emoji、完成徽章）畫成貼圖；陰影模糊很貴，不該每幀重算
+  function paintBubble(cx, y, b, st) {
+    const r = 15;
+    ctx.save();
+    ctx.shadowColor = 'rgba(0,0,0,.25)'; ctx.shadowBlur = 6; ctx.shadowOffsetY = 2;
+    circle(cx, y, r, st.locked ? '#d9dde0' : '#ffffff');
+    ctx.restore();
+    ctx.lineWidth = 3; ctx.strokeStyle = st.locked ? '#aab4ba' : (st.done ? '#3f9a55' : b.accent);
+    ctx.beginPath(); ctx.arc(cx, y, r, 0, 7); ctx.stroke();
+    ctx.font = '16px ' + EMOJI_FONT; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#000';
+    ctx.fillText(st.locked ? '🔒' : b.emoji, cx, y + 1);
+    if (st.done) {
+      circle(cx + 12, y + 11, 7, '#3f9a55');
+      ctx.font = 'bold 10px sans-serif'; ctx.fillStyle = '#fff'; ctx.fillText('✓', cx + 12, y + 11.5);
+    }
+    if (st.boost && !st.locked) {
+      pill(cx + 8, y - 26, 30, 15, '#ef7b5c');
+      ctx.font = 'bold 10px sans-serif'; ctx.fillStyle = '#fff'; ctx.fillText('×' + st.boost, cx + 23, y - 18);
+    }
+  }
+
   function drawBubble(b, st, t) {
     const p = bubblePos(b);
     const y = p.y + Math.sin(t * 2 + b.x) * 2, r = 15;
-    ctx.save();
-    ctx.shadowColor = 'rgba(0,0,0,.25)'; ctx.shadowBlur = 6; ctx.shadowOffsetY = 2;
-    circle(p.x, y, r, st.locked ? '#d9dde0' : '#ffffff');
-    ctx.restore();
-    ctx.lineWidth = 3; ctx.strokeStyle = st.locked ? '#aab4ba' : (st.done ? '#3f9a55' : b.accent);
-    ctx.beginPath(); ctx.arc(p.x, y, r, 0, 7); ctx.stroke();
+    const e = cached('bub:' + b.id + ':' + (st.locked ? 1 : 0) + (st.done ? 1 : 0) + ':' + (st.boost || 0), 80, 80, () => paintBubble(38, 40, b, st));
+    ctx.drawImage(e.c, p.x - 38, y - 40, e.w, e.h);
     if (st.progress != null) {
       ctx.strokeStyle = '#ef7b5c'; ctx.lineWidth = 4; ctx.lineCap = 'round';
       ctx.beginPath(); ctx.arc(p.x, y, r, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * st.progress); ctx.stroke();
-    }
-    ctx.font = '16px ' + EMOJI_FONT; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillStyle = '#000';
-    ctx.fillText(st.locked ? '🔒' : b.emoji, p.x, y + 1);
-    if (st.done) {
-      circle(p.x + 12, y + 11, 7, '#3f9a55');
-      ctx.font = 'bold 10px sans-serif'; ctx.fillStyle = '#fff'; ctx.fillText('✓', p.x + 12, y + 11.5);
-    }
-    if (st.boost && !st.locked) {
-      pill(p.x + 8, y - 26, 30, 15, '#ef7b5c');
-      ctx.font = 'bold 10px sans-serif'; ctx.fillStyle = '#fff'; ctx.fillText('×' + st.boost, p.x + 23, y - 18);
     }
     return { x: p.x, y };
   }
@@ -518,33 +582,44 @@
     return 0.42;
   }
 
+  // 分段計時（?perf 或 World.prof.on = true 才會量；平常不花成本）
+  const P = { on: false, acc: {}, n: 0 };
+  let pt = 0, bgGrad = null, bgH = 0;
+  const lap = (name) => { if (!P.on) return; const n = performance.now(); P.acc[name] = (P.acc[name] || 0) + (n - pt); pt = n; };
+
   function render(t, v) {
+    if (P.on) { pt = performance.now(); P.n++; }
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    const g = ctx.createLinearGradient(0, 0, 0, canvas.height);
-    g.addColorStop(0, '#5cbad4'); g.addColorStop(1, '#2f8fb0');
-    ctx.fillStyle = g; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    if (!bgGrad || bgH !== canvas.height) {
+      bgGrad = ctx.createLinearGradient(0, 0, 0, canvas.height); bgH = canvas.height;
+      bgGrad.addColorStop(0, '#5cbad4'); bgGrad.addColorStop(1, '#2f8fb0');
+    }
+    ctx.fillStyle = bgGrad; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    lap('bg');
 
     const z = zoom() * dpr;
     ctx.setTransform(z, 0, 0, z, (W / 2 - cam.cx * zoom()) * dpr, (H / 2 - cam.cy * zoom()) * dpr);
 
     drawWater(t);
-    for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) {
-      const type = tileAt(x, y);
-      if (type !== '.') drawTile(x, y, type);
-    }
+    lap('water');
+    drawTerrain();
+    lap('tiles');
 
     // 依深度排序後繪製立體物件
     const items = [];
-    buildings.forEach((b) => items.push({ d: b.x + b.y + 1, f: () => drawBuilding(b, t, v.status(b), b.id === v.hoverId) }));
-    trees.forEach(([x, y]) => items.push({ d: x + y + 1.05, f: () => drawTree(x, y) }));
-    palms.forEach(([x, y]) => items.push({ d: x + y + 1.05, f: () => drawPalm(x, y, t) }));
-    if (v.sim.visible) items.push({ d: v.sim.fx + v.sim.fy + 1.02, f: () => drawSim(v.sim, v.mood, t) });
-    (v.decor || []).forEach((d) => items.push({ d: d.x + d.y + 1.01, f: () => drawDecor(d, t) }));
-    items.push({ d: 999, f: () => drawBoat(t) });
+    buildings.forEach((b) => items.push({ k: 'bld', d: b.x + b.y + 1, f: () => drawBuilding(b, t, v.status(b), b.id === v.hoverId) }));
+    trees.forEach(([x, y]) => items.push({ k: 'tree', d: x + y + 1.05, f: () => drawTree(x, y) }));
+    palms.forEach(([x, y]) => items.push({ k: 'palm', d: x + y + 1.05, f: () => drawPalm(x, y, t) }));
+    if (v.sim.visible) items.push({ k: 'sim', d: v.sim.fx + v.sim.fy + 1.02, f: () => drawSim(v.sim, v.mood, t) });
+    (v.decor || []).forEach((d) => items.push({ k: 'decor', d: d.x + d.y + 1.01, f: () => drawDecor(d, t) }));
+    items.push({ k: 'boat', d: 999, f: () => drawBoat(t) });
     if (v.items) v.items(t).forEach((it) => items.push(it)); // 島上生活：擺設、小動物、居民…
     items.sort((a, b) => a.d - b.d);
-    items.forEach((it) => it.f());
+    if (P.on) items.forEach((it) => { const a = performance.now(); it.f(); const key = 'i:' + (it.k || 'life'); P.acc[key] = (P.acc[key] || 0) + performance.now() - a; });
+    else items.forEach((it) => it.f());
+    lap('items');
     if (v.over) v.over(t); // 蝴蝶、海鷗、魚…（不參與深度排序）
+    lap('over');
 
     // 選取 / 滑過標記（貼在建築腳下，放在物件之後才不會被貼圖蓋住）
     const sel = buildings.find((b) => b.id === v.selectedId);
@@ -570,19 +645,23 @@
       ctx.globalAlpha = 1;
     });
 
+    lap('ui');
     // 日夜色調
     const world = ctx.getTransform();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     const na = nightAlpha(v.minutes);
     if (na > 0) { ctx.fillStyle = 'rgba(14,24,70,' + na.toFixed(3) + ')'; ctx.fillRect(0, 0, canvas.width, canvas.height); }
+    lap('tint');
     // 夜裡的燈光要畫在色調之後，才不會被蓋暗
     if (v.glow && na > 0.05) { ctx.setTransform(world); v.glow(t, na); ctx.setTransform(1, 0, 0, 1, 0, 0); }
+    lap('glow');
     if (v.screen) v.screen(t, canvas.width, canvas.height, dpr, na); // 雲、雨、花瓣（螢幕座標，單位是實際像素）
+    lap('screen');
   }
 
   global.World = {
     init, resize, render, pick, findPath, panBy, zoomBy, resetView, bubblePos, iso,
-    toWorld, toTile, tileAt, ctx: () => ctx, size: () => ({ cols, rows }), nightAlpha,
+    toWorld, toTile, tileAt, ctx: () => ctx, size: () => ({ cols, rows }), nightAlpha, prof: P, dprCap: () => dprCap, setDprCap: (c) => { dprCap = c; resize(); }, emoji: emojiSprite, zoomLevel: () => cam.z,
     occupied: (x, y) => occ.has(x + ',' + y),
     walkable: (x, y) => !!WALKABLE[tileAt(x, y)],
   };

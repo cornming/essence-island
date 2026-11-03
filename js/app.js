@@ -614,35 +614,67 @@
   }
 
   /* ---------- 畫布輸入 ---------- */
+  // 滑鼠與觸控共用 pointer events：一指拖曳平移、輕點選取 / 聊天 / 擺放、雙指縮放並平移、滾輪縮放
   function bindCanvas(canvas) {
-    let drag = null;
+    const ptrs = new Map();   // 目前按著的手指（或滑鼠）：pointerId → 畫布內座標
+    let drag = null, pinch = null;
     const pos = (e) => { const r = canvas.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
     const aim = (p) => { // 擺放模式：預覽格子
       const t = World.toTile(p.x, p.y);
       ghost = placing ? { x: t.x, y: t.y, id: placing.id, valid: tileFree(t.x, t.y) } : null;
     };
-    canvas.addEventListener('pointerdown', (e) => { canvas.setPointerCapture(e.pointerId); drag = { x: e.clientX, y: e.clientY, moved: false }; });
+    const two = () => { // 前兩根手指的中點與距離
+      const [a, b] = Array.from(ptrs.values());
+      return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, d: Math.hypot(a.x - b.x, a.y - b.y) };
+    };
+
+    canvas.addEventListener('pointerdown', (e) => {
+      const p = pos(e); ptrs.set(e.pointerId, p);
+      try { canvas.setPointerCapture(e.pointerId); } catch (er) { /* 某些瀏覽器在合成事件上會丟錯 */ }
+      if (ptrs.size === 1) {
+        drag = { x: p.x, y: p.y, moved: false, slop: e.pointerType === 'mouse' ? 4 : 10 }; // 手指比滑鼠抖，容許位移大一點
+        if (placing) aim(p);
+      } else if (ptrs.size === 2) { drag = null; pinch = two(); canvas.classList.add('is-drag'); ghost = null; }
+    });
+
     canvas.addEventListener('pointermove', (e) => {
       const p = pos(e);
-      if (placing && !drag) { aim(p); canvas.classList.add('is-pointer'); return; }
+      if (ptrs.has(e.pointerId)) ptrs.set(e.pointerId, p);
+      if (pinch && ptrs.size >= 2) { // 雙指：以中點為中心縮放，中點移動則平移
+        const m = two();
+        if (pinch.d > 0 && m.d > 0) World.zoomBy(m.d / pinch.d, m.x, m.y);
+        World.panBy(m.x - pinch.x, m.y - pinch.y);
+        pinch = m; return;
+      }
       if (drag) {
-        const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
-        if (drag.moved || Math.hypot(dx, dy) > 4) {
-          drag.moved = true; canvas.classList.add('is-drag');
-          World.panBy(dx, dy); drag.x = e.clientX; drag.y = e.clientY;
+        const dx = p.x - drag.x, dy = p.y - drag.y;
+        if (drag.moved || Math.hypot(dx, dy) > drag.slop) {
+          drag.moved = true; canvas.classList.add('is-drag'); ghost = null;
+          World.panBy(dx, dy); drag.x = p.x; drag.y = p.y;
         }
-      } else {
+      } else if (e.pointerType === 'mouse') { // 只有滑鼠有「滑過」
+        if (placing) { aim(p); canvas.classList.add('is-pointer'); return; }
         const b = World.pick(p.x, p.y), w = World.toWorld(p.x, p.y);
         hoverId = b ? b.id : null;
         canvas.classList.toggle('is-pointer', !!b || !!Life.pickNpc(w) || !!Life.pickPet(w, now));
       }
     });
+
     const end = (e) => {
+      ptrs.delete(e.pointerId);
+      if (pinch) { // 雙指放掉其中一指：剩下的那一指繼續平移，不算輕點
+        if (ptrs.size >= 2) { pinch = two(); return; }
+        pinch = null;
+        const r = ptrs.values().next().value;
+        drag = r ? { x: r.x, y: r.y, moved: true, slop: 10 } : null;
+        if (!r) canvas.classList.remove('is-drag');
+        return;
+      }
       if (!drag) return;
       const moved = drag.moved; drag = null; canvas.classList.remove('is-drag');
-      if (moved || e.type !== 'pointerup') return;
+      if (moved || e.type !== 'pointerup') { if (placing && e.pointerType !== 'mouse') ghost = null; return; }
       const p = pos(e);
-      if (placing) { const t = World.toTile(p.x, p.y); aim(p); return placeAt(t.x, t.y); }
+      if (placing) { const t = World.toTile(p.x, p.y); aim(p); placeAt(t.x, t.y); if (e.pointerType !== 'mouse') ghost = null; return; }
       const w = World.toWorld(p.x, p.y), npc = Life.pickNpc(w), pet = npc ? null : Life.pickPet(w, now);
       if (npc) return talk(npc);
       if (pet) return petPlay(pet);
@@ -650,8 +682,10 @@
     };
     canvas.addEventListener('pointerup', end);
     canvas.addEventListener('pointercancel', end);
-    canvas.addEventListener('pointerleave', () => { if (!drag) { hoverId = null; if (placing) ghost = null; } });
+    canvas.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse' && !drag) { hoverId = null; if (placing) ghost = null; } });
     canvas.addEventListener('wheel', (e) => { e.preventDefault(); const p = pos(e); World.zoomBy(e.deltaY < 0 ? 1.12 : 1 / 1.12, p.x, p.y); }, { passive: false });
+    canvas.addEventListener('contextmenu', (e) => e.preventDefault()); // 手機長按不要跳出選單
+    ['gesturestart', 'gesturechange'].forEach((n) => canvas.addEventListener(n, (e) => e.preventDefault())); // iOS Safari 的整頁縮放
   }
 
   function bindUi() {
@@ -726,14 +760,31 @@
       screen: (t, w, h, dpr) => Life.screen(t, w, h, dpr),
     };
 
+    // 效能：島不在畫面上（捲到下面的面板）或被視窗蓋住時不重畫；畫面卡頓時自動降低解析度
+    let stageVisible = true;
+    if ('IntersectionObserver' in window) new IntersectionObserver((es) => { stageVisible = es[es.length - 1].isIntersecting; }).observe($('#stage'));
+    const dprParam = +params.get('dpr');
+    if (dprParam > 0) World.setDprCap(dprParam);
+    World.prof.on = params.has('perf');
+    const QUALITY = [2, 1.5, 1]; // 解析度上限（裝置像素比）依序往下
+    const slow = { ema: 0, n: 0 };
+    function adapt(gap) {
+      if (dprParam > 0 || gap > 250) return; // 固定解析度，或切分頁回來的長間隔：不算
+      slow.ema = slow.n ? slow.ema * 0.95 + gap * 0.05 : gap; slow.n++;
+      if (slow.n < 90 || slow.ema < 26) return; // 約 1.5 秒內平均低於 38 fps 才降
+      const next = QUALITY.find((q) => q < World.dprCap());
+      slow.n = 0;
+      if (next && (window.devicePixelRatio || 1) > next) { World.setDprCap(next); console.info('[精油島] 畫面偏慢，解析度上限降到 ' + next); }
+    }
+
     let prev = performance.now(), wTick = 0;
     function frame(ts) {
-      const dt = Math.min(0.25, (ts - prev) / 1000); prev = ts; now = ts / 1000;
+      const gap = ts - prev, dt = Math.min(0.25, gap / 1000); prev = ts; now = ts / 1000;
       update(dt);
       Life.update(dt, now, World.nightAlpha(view.minutes));
       if (now - wTick > 0.5) { wTick = now; paintWeather(); }
       fx = fx.filter((f) => now - f.born < 1.8); view.fx = fx;
-      World.render(now, view);
+      if (stageVisible && $('#modal').hidden && !document.hidden) { World.render(now, view); adapt(gap); }
       requestAnimationFrame(frame);
     }
     requestAnimationFrame(frame);

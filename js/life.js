@@ -24,6 +24,31 @@
   function circle(c, x, y, r, fill) { c.beginPath(); c.arc(x, y, r, 0, 7); c.fillStyle = fill; c.fill(); }
   function shadow(c, x, y, rx, ry) { c.fillStyle = 'rgba(0,0,0,.2)'; c.beginPath(); c.ellipse(x, y, rx, ry, 0, 0, 7); c.fill(); }
 
+  // 小貼圖快取：光暈與雲都是半透明大圓，每幀重畫很貴
+  const sprites = {};
+  function glowSprite(rgb, r) {
+    const key = 'g' + rgb + r;
+    if (!sprites[key]) {
+      const c = document.createElement('canvas'); c.width = c.height = Math.ceil(r * 2);
+      const g = c.getContext('2d'), gr = g.createRadialGradient(r, r, 0, r, r, r);
+      gr.addColorStop(0, 'rgba(' + rgb + ',1)'); gr.addColorStop(1, 'rgba(' + rgb + ',0)');
+      g.fillStyle = gr; g.fillRect(0, 0, r * 2, r * 2);
+      sprites[key] = c;
+    }
+    return sprites[key];
+  }
+  function cloudSprite(s, col, a) { // s：以裝置像素計的大小；回傳以雲心為 (cx, cy) 的貼圖
+    const key = 'c' + Math.round(s) + col + a;
+    if (!sprites[key]) {
+      const w = Math.ceil(s * 3), h = Math.ceil(s * 1.9), cx = s * 1.5, cy = s * 1.1;
+      const c = document.createElement('canvas'); c.width = w; c.height = h;
+      const g = c.getContext('2d');
+      [[0, 0, 1], [-0.8, 0.2, 0.75], [0.85, 0.15, 0.8], [0.2, -0.45, 0.7]].forEach(([dx, dy, r]) => circle(g, cx + dx * s, cy + dy * s, r * s * 0.75, 'rgba(' + col + ',' + a + ')'));
+      sprites[key] = { c, cx, cy };
+    }
+    return sprites[key];
+  }
+
   /* ---------- 初始化 ---------- */
   function init(data, h) {
     D = data; hook = h || {};
@@ -131,9 +156,8 @@
     c.translate(p.x, p.y - hop - bob);
     if (!pet && it.kind === 'plant' && it.size < 40) c.rotate(Math.sin(t * 1.6 + p.x * 0.1) * 0.05);
     if (pet && p.dir < 0) c.scale(-1, 1);
-    c.font = it.size + 'px ' + EMOJI_FONT; c.textAlign = 'center'; c.textBaseline = 'alphabetic';
-    c.fillStyle = '#000'; // 彩色 emoji 會吃到 fillStyle 的透明度，影子留下的半透明色要換掉
-    c.fillText(it.emoji, 0, it.size * 0.12);
+    const sp = World.emoji(it.emoji, it.size); // emoji 先畫成貼圖，每幀只貼圖（fillText 很貴）
+    c.drawImage(sp.img, -sp.w / 2, it.size * 0.12 - sp.by, sp.w, sp.h);
     c.restore();
   }
 
@@ -243,17 +267,14 @@
     c.save(); c.globalCompositeOperation = 'lighter';
     (hook.placed ? hook.placed() : []).forEach((pl) => {
       const it = hook.item(pl.id); if (!it || !it.glow) return;
-      const p = iso(pl.x + 0.5, pl.y + 0.55, it.id === 'lamp' ? 37 : 16), r = 58 + Math.sin(t * 2.2 + pl.x) * 2;
-      const g = c.createRadialGradient(p.x, p.y, 2, p.x, p.y, r);
-      g.addColorStop(0, 'rgba(255,214,120,' + (0.6 * k).toFixed(2) + ')'); g.addColorStop(1, 'rgba(255,214,120,0)');
-      c.fillStyle = g; c.beginPath(); c.arc(p.x, p.y, r, 0, 7); c.fill();
+      const p = iso(pl.x + 0.5, pl.y + 0.55, it.id === 'lamp' ? 37 : 16), r = 58;
+      c.globalAlpha = (0.6 + Math.sin(t * 2.2 + pl.x) * 0.04) * k;
+      c.drawImage(glowSprite('255,214,120', r), p.x - r, p.y - r, r * 2, r * 2);
     });
     // 螢火蟲
     flies.forEach((f, i) => {
       const a = (0.5 + 0.5 * Math.sin(t * 2 + f.ph)) * k, p = iso(f.x + Math.sin(t * 0.6 + f.ph) * 0.3, f.y, 10 + Math.sin(t + f.ph) * 6);
-      const g = c.createRadialGradient(p.x, p.y, 0, p.x, p.y, 7);
-      g.addColorStop(0, 'rgba(230,255,150,' + a.toFixed(2) + ')'); g.addColorStop(1, 'rgba(230,255,150,0)');
-      c.fillStyle = g; c.beginPath(); c.arc(p.x, p.y, 7, 0, 7); c.fill();
+      c.globalAlpha = a; c.drawImage(glowSprite('230,255,150', 7), p.x - 7, p.y - 7, 14, 14);
     });
     c.restore();
   }
@@ -265,8 +286,8 @@
     const n = k === 'clear' ? 2 : k === 'petal' ? 3 : 6, a = k === 'rain' ? 0.4 : k === 'cloud' ? 0.4 : 0.2;
     clouds.slice(0, n).forEach((cl) => {
       const x = (((cl.x + t * cl.v) % 1.5) - 0.25) * W, y = cl.y * H * 0.6, s = cl.s * 46 * dpr;
-      const col = k === 'rain' ? '170,182,196' : '255,255,255';
-      [[0, 0, 1], [-0.8, 0.2, 0.75], [0.85, 0.15, 0.8], [0.2, -0.45, 0.7]].forEach(([dx, dy, r]) => circle(c, x + dx * s, y + dy * s, r * s * 0.75, 'rgba(' + col + ',' + a + ')'));
+      const sp = cloudSprite(s, k === 'rain' ? '170,182,196' : '255,255,255', a);
+      c.drawImage(sp.c, x - sp.cx, y - sp.cy);
     });
     if (k === 'rain') {
       c.fillStyle = 'rgba(40,62,92,.14)'; c.fillRect(0, 0, W, H);
