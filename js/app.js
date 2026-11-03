@@ -8,7 +8,7 @@
   const KEY = (id) => 'essence-island:v1:' + id;
   const LAST = 'essence-island:last';
   const SPEED = 2.6; // 小人走路速度（格 / 秒）
-  const TITLES = [[0, '精油新芽'], [2, '香氣探險家'], [4, '使用小達人'], [6, '配方職人'], [7, '精油好夥伴']];
+  const TITLES = [[0, '精油新芽'], [2, '香氣探險家'], [4, '使用小達人'], [6, '配方職人'], [8, '精油好夥伴']];
 
   const $ = (s, r) => (r || document).querySelector(s);
   const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
@@ -168,7 +168,7 @@
   let L = null; // 目前課程狀態
 
   function openModal() { $('#modal').hidden = false; document.body.style.overflow = 'hidden'; }
-  function closeModal() { $('#modal').hidden = true; document.body.style.overflow = ''; L = null; }
+  function closeModal() { $('#modal').hidden = true; document.body.style.overflow = ''; $('.modal-card').classList.remove('is-wide'); L = null; }
 
   function openLesson(b) {
     L = { b, page: 0, quiz: {}, checks: {}, look: { need: '全部', q: '' }, rtab: 0, dtab: 0 };
@@ -191,6 +191,9 @@
     $('#mBody').innerHTML = pageHtml(p);
     $('#mBody').scrollTop = 0;
     if (p.type === 'tool' && p.tool === 'dilution') dilutionCalc();
+    const isPlan = p.type === 'tool' && p.tool === 'plan';
+    $('.modal-card').classList.toggle('is-wide', isPlan);
+    if (isPlan) Plan.mount($('#planRoot'), member, C.plan);
     $('#mPrev').hidden = false; $('#mPrev').disabled = L.page === 0;
     $('#mNext').textContent = last ? (S.done[b.id] ? '完成複習' : '完成學習 +' + C.reward + ' 💧') : '下一步';
     $('#mNext').disabled = !pageOk(p, L.page);
@@ -245,6 +248,7 @@
     if (t === 'daily30') return daily30Html();
     if (t === 'recipes') return recipesHtml();
     if (t === 'diy') return diyHtml();
+    if (t === 'plan') return '<div id="planRoot"></div>';
     return '';
   }
 

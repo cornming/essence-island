@@ -18,6 +18,27 @@ window.ISLAND_DATA = {
     verifyMember: async () => true,
     // 背景音樂：src 留空 = 即時產生的舒緩環境音樂；填音檔路徑（如 'assets/audio/bgm.mp3'）= 改播該檔並循環
     bgm: { src: '', volume: 0.35 },
+    // 方案工坊：網站不內建任何真實的價格或 PV。使用者在頁面上匯入自己的價目表，資料只存在他的瀏覽器。
+    // 下面的 sample 是「假資料」，只用來示範格式與試玩，數字都不是真實價格。
+    plan: {
+      defaultTiers: [100, 200],
+      disclaimer: '非官方工具。價格與 PV 以官方公告為準，本方案表僅供個人整理與分享參考，不代表任何收入或獎金的承諾。',
+      sample: {
+        currency: 'NT$', source: '範例資料（假資料，不是真實價格）', updated: '2000-01-01',
+        items: [
+          { sku: 'SAMPLE-01', name: '範例商品 A', ws: 450, pv: 9, rt: 590, cat: '範例' },
+          { sku: 'SAMPLE-02', name: '範例商品 B', ws: 500, pv: 10, rt: 650, cat: '範例' },
+          { sku: 'SAMPLE-03', name: '範例商品 C', ws: 800, pv: 16, rt: 1050, cat: '範例' },
+          { sku: 'SAMPLE-04', name: '範例商品 D', ws: 900, pv: 18, rt: 1180, cat: '範例' },
+          { sku: 'SAMPLE-05', name: '範例商品 E', ws: 1200, pv: 25, rt: 1560, cat: '範例' },
+          { sku: 'SAMPLE-06', name: '範例商品 F', ws: 1500, pv: 30, rt: 1950, cat: '範例' },
+          { sku: 'SAMPLE-07', name: '範例商品 G', ws: 2000, pv: 40, rt: 2600, cat: '範例' },
+          { sku: 'SAMPLE-08', name: '範例商品 H', ws: 2500, pv: 50, rt: 3250, cat: '範例' },
+          { sku: 'SAMPLE-09', name: '範例商品 I', ws: 3000, pv: 60, rt: 3900, cat: '範例' },
+          { sku: 'SAMPLE-10', name: '範例贈品 J（無 PV）', ws: 100, pv: 0, rt: 130, cat: '範例' },
+        ],
+      },
+    },
     disclaimer: '本站內容為一般芳香知識與使用情境分享，不是醫療建議，也不能取代醫師或合格芳療師的意見。',
   },
 
@@ -332,6 +353,22 @@ window.ISLAND_DATA = {
         ] },
         { type: 'quiz', q: '哪一種分享說法比較合適？', options: ['「睡前擴香讓我覺得很放鬆。」', '「這瓶可以治好失眠，保證有效！」', '「不用稀釋，直接擦最快。」'], answer: 0,
           explain: '分享個人感受就好，不誇大療效，也不教人跳過安全步驟。' },
+      ],
+    },
+    {
+      id: 'plan', kind: 'station', order: 8, group: 'share', sprite: 'assets/buildings/plan.png', name: '方案工坊', emoji: '🧾',
+      x: 8, y: 10, door: { x: 7, y: 10 }, after: 'share', accent: '#c9573f', decor: { x: 9, y: 10, color: '#f2b84b' },
+      summary: '匯入你自己的價目表，設定 PV 級距與產品組合，產生可以分享的客製方案表。',
+      learn: ['匯入自己的價目資料（只留在你的瀏覽器）', '設定 PV 級距、組合商品，並自動調整數量', '輸出成圖片、Excel 或 HTML'],
+      style: { w: 0.72, d: 0.72, h: 58, wall: '#e3d9f6', roof: '#c9573f', roofType: 'flat',
+        win: { cols: 2, rows: 2, color: '#ffd7f0' }, door: '#5d4a9c' },
+      pages: [
+        { type: 'info', title: '方案表怎麼做', items: [
+          { icon: '📥', h: '1. 匯入價目', p: '把你手上的官方價目表（品名、批發價、PV、零售價）貼上或選檔匯入。網站沒有內建任何真實價格或 PV。' },
+          { icon: '🎯', h: '2. 設定級距與組合', p: '決定要做哪幾個 PV 級距，替每個級距挑商品；可以讓系統自動調整數量，剛好湊到目標 PV。' },
+          { icon: '🧾', h: '3. 產生方案表', p: '預覽後輸出成圖片、Excel 或 HTML，分享給想了解的人。' },
+        ], tip: '資料只存在這個瀏覽器，不會上傳。方案表會附上「價格與 PV 以官方公告為準」的聲明，也請不要加入收入或獎金的承諾。' },
+        { type: 'tool', tool: 'plan', title: '方案表產生器' },
       ],
     },
   ],
