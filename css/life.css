@@ -127,3 +127,8 @@
 .rt-card p { margin: 0; font-size: 14px; color: #44606f; }
 .rt-hint { font-size: 14px; color: #44606f; text-align: center; margin: 8px 0 0; }
 .tn-name { paint-order: stroke; stroke: #fff; stroke-width: 4px; stroke-linejoin: round; }
+
+/* 在線感 */
+.chip[hidden] { display: none; }
+.pr-row { display: flex; align-items: center; gap: 8px; margin: 6px 0; font-size: 14px; }
+.pr-row input { width: 18px; height: 18px; }

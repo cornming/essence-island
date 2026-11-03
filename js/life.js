@@ -180,6 +180,32 @@
     c.fillStyle = n.hair; c.beginPath(); c.arc(p.x, y - 27, 6.2, Math.PI, 0); c.fill();
   }
 
+  // 其他夥伴：半透明的小人，頭上有暱稱標籤（標籤先畫成貼圖）
+  const nameTags = new Map();
+  function nameTag(name) {
+    let e = nameTags.get(name);
+    if (e) return e;
+    const S = 2, m = document.createElement('canvas').getContext('2d');
+    m.font = '600 11px ' + TEXT_FONT;
+    const w = Math.ceil(m.measureText(name).width) + 14, h = 16;
+    const c = document.createElement('canvas'); c.width = w * S; c.height = h * S;
+    const g = c.getContext('2d'); g.scale(S, S);
+    g.fillStyle = 'rgba(31,59,77,.8)'; g.beginPath(); if (g.roundRect) g.roundRect(0, 0, w, h, h / 2); else g.rect(0, 0, w, h); g.fill();
+    g.fillStyle = '#fff'; g.font = '600 11px ' + TEXT_FONT; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(name, w / 2, h / 2 + 0.5);
+    e = { c, w, h };
+    if (nameTags.size > 120) nameTags.delete(nameTags.keys().next().value); // 暱稱是別人取的，快取要有上限
+    nameTags.set(name, e);
+    return e;
+  }
+  function drawPeer(p, t) {
+    const c = ctx();
+    c.save(); c.globalAlpha = 0.88;
+    drawNpc({ fx: p.ox, fy: p.oy, hair: p.hair, shirt: p.shirt, moving: p.moving }, t);
+    c.restore();
+    const pos = iso(p.ox + 0.5, p.oy + 0.5, 0), tag = nameTag(p.n);
+    c.drawImage(tag.c, pos.x - tag.w / 2, pos.y - 50, tag.w, tag.h);
+  }
+
   function drawGhost(g, t) {
     const c = ctx(), it = hook.item && hook.item(g.id);
     const a = iso(g.x, g.y), b = iso(g.x + 1, g.y), d = iso(g.x + 1, g.y + 1), e = iso(g.x, g.y + 1);
@@ -199,6 +225,7 @@
       out.push({ d: pp.x + pp.y + 1.03, f: () => drawItem(c, it, { x: p.x, y: p.y, dir: pp.dir, flip: !!pl.f && it.kind !== 'pet' }, t, null, pops.get(key), b0) });
     });
     npcs.forEach((n) => out.push({ d: n.fx + n.fy + 1.02, f: () => drawNpc(n, t) }));
+    (hook.peers ? hook.peers() : []).forEach((p) => out.push({ d: p.ox + p.oy + 1.02, f: () => drawPeer(p, t) }));
     const g = hook.ghost && hook.ghost();
     if (g) out.push({ d: 998, f: () => drawGhost(g, t) });
     return out;

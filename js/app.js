@@ -24,7 +24,7 @@
   /* ---------- 存檔 ---------- */
   const fresh = () => ({
     drops: 0, done: {}, days: { n: 0, last: '' }, fav: '', note: '', selectedOnce: false, tour: false,
-    inv: {}, placed: [], ach: {}, best: {}, streak: { n: 0, last: '' },
+    inv: {}, placed: [], ach: {}, best: {}, streak: { n: 0, last: '' }, presence: { on: true, nick: '' },
     daily: { date: '', prog: {}, claimed: {}, bonus: false, played: {}, gameDrops: 0, talked: {} },
     stats: { earned: 0, bought: 0, games: 0, talks: 0 },
   });
@@ -36,7 +36,7 @@
       if (raw) {
         const o = JSON.parse(raw), s = Object.assign(fresh(), o);
         // 舊存檔沒有的欄位補上預設值（巢狀物件逐欄合併）
-        ['inv', 'ach', 'best', 'streak', 'daily', 'stats'].forEach((k) => { s[k] = Object.assign(fresh()[k], o[k] || {}); });
+        ['inv', 'ach', 'best', 'streak', 'daily', 'stats', 'presence'].forEach((k) => { s[k] = Object.assign(fresh()[k], o[k] || {}); });
         s.placed = Array.isArray(o.placed) ? o.placed.filter((p) => p && shopById(p.id) && Number.isInteger(p.x) && Number.isInteger(p.y)) : [];
         if (!o.stats) s.stats.earned = o.drops || 0;
         return s;
@@ -475,6 +475,11 @@
         if (e.target.checked) on.add(i); else on.delete(i);
         L.checks[L.page] = Array.from(on); renderLesson();
       } else if (e.target.id === 'dlMl' || e.target.id === 'dlPct') dilutionCalc();
+      else if (e.target.id === 'prVisible') { S.presence.on = e.target.checked; save(); Presence.setVisible(S.presence.on); paintOnline(); }
+      else if (e.target.id === 'prNick') {
+        const n = Presence.clean(e.target.value); if (n) S.presence.nick = n;
+        e.target.value = S.presence.nick; save(); Presence.setNick(S.presence.nick);
+      }
     });
     $('#mBody').addEventListener('input', (e) => {
       if (!L) return;
@@ -548,11 +553,14 @@
         '<div class="stat"><small>30 天打卡</small><b>' + S.days.n + ' / 30</b></div></div>' +
         '<h3>學習進度</h3><div class="badges">' + stations.map((b) => '<span class="badge' + (S.done[b.id] ? ' is-on' : '') + '">' + b.emoji + ' ' + b.name + '</span>').join('') + '</div>' +
         '<h3>我最愛的精油</h3><p>' + (fav ? '<span class="tag">' + fav.name + '</span> ' + fav.aroma : '還沒選，到入門小舖選一款吧。') + '</p>' +
+        '<h3>在線狀態</h3><label class="pr-row"><input type="checkbox" id="prVisible"> 讓其他夥伴看到我在線上</label>' +
+        '<label class="pl-label">我的暱稱（最多 10 字）<input id="prNick" maxlength="10" autocomplete="off"></label>' +
+        '<p class="note">只會分享暱稱和你在島上的位置，不含會員編號，也不含學習進度。關閉後不會連線，也看不到別人。</p>' +
         '<h3>我的筆記</h3><textarea id="noteArea" placeholder="記下喜歡的配方、使用感受、下次想試的組合……" aria-label="我的筆記"></textarea>' +
         '<button type="button" class="danger-link" data-act="reset">清除我的學習進度</button>';
     }
     $('#mBody').innerHTML = '<div class="tool"><div class="pl-steps">' + tabs + '</div>' + body + '</div>';
-    if (L.ntab === 'me') $('#noteArea').value = S.note;
+    if (L.ntab === 'me') { $('#noteArea').value = S.note; $('#prVisible').checked = S.presence.on; $('#prNick').value = S.presence.nick; }
   }
 
   /* --- 水滴市集 / 遊樂亭 --- */
@@ -685,6 +693,7 @@
     const first = doneCount() === 0 && !S.selectedOnce;
     selectedId = first ? 'kit' : null;
     dailyLogin(); checkAch(); save();
+    startPresence();
     renderAll();
     if (first && !S.tour) setTimeout(() => { if (member === id && !Tour.isOn()) startTour(); }, 1200); // 第一次進島：自動帶導覽
     if (first) toast('歡迎來到精油島！先從「入門小舖」開始第一步', true);
@@ -843,11 +852,30 @@
     if (force || txt !== weatherTxt) { weatherTxt = txt; $('#hudWeatherTxt').textContent = txt; }
   }
 
+  /* ---------- 在線感 ---------- */
+  function startPresence() {
+    if (!S.presence.nick) { // 隨機暱稱，只存在這台裝置；不從會員編號推出來
+      const oil = D.oils[Math.floor(Math.random() * D.oils.length)].name, w = ['夥伴', '學徒', '探險家', '園丁', '調香師'][Math.floor(Math.random() * 5)];
+      S.presence.nick = Presence.clean(oil + w); save();
+    }
+    Presence.init({ config: C.presence, dims: World.size(), nick: S.presence.nick, x: sim.fx, y: sim.fy, visible: S.presence.on });
+  }
+  let onlineTxt = '';
+  function paintOnline() {
+    const m = Presence.mode(), n = Presence.count(), chip = $('#hudOnline');
+    const show = m === 'firebase' || (m === 'local' && n > 1); // 沒設定即時服務時，只有看到其他分頁才顯示，避免老是顯示「1 位」
+    chip.hidden = !show;
+    if (!show) return;
+    const txt = '👥 ' + n + ' 位夥伴在線';
+    if (txt !== onlineTxt) { onlineTxt = txt; $('#hudOnlineTxt').textContent = txt; }
+    chip.title = (m === 'local' ? '尚未設定即時服務，目前只看得到這個瀏覽器的其他分頁。' + String.fromCharCode(10) : '') + '在線：你' + Presence.names().map((x) => '、' + x).join('');
+  }
+
   /* ---------- 啟動 ---------- */
   function boot() {
     const canvas = $('#island');
     World.init(canvas, D);
-    Life.init(D, { placed: () => S.placed, ghost: () => ghost, item: shopById });
+    Life.init(D, { placed: () => S.placed, ghost: () => ghost, item: shopById, peers: () => Presence.peers() });
     const wp = params.get('weather');
     if (wp && Life.info(wp)) { Life.setWeather(wp, 0); Life.lockWeather(true); }
     bindCanvas(canvas); bindUi(); bindGate(); bindModal();
@@ -890,7 +918,8 @@
       const gap = ts - prev, dt = Math.min(0.25, gap / 1000); prev = ts; now = ts / 1000;
       update(dt);
       Life.update(dt, now, World.nightAlpha(view.minutes));
-      if (now - wTick > 0.5) { wTick = now; paintWeather(); }
+      Presence.update(dt, sim.fx, sim.fy);
+      if (now - wTick > 0.5) { wTick = now; paintWeather(); paintOnline(); }
       fx = fx.filter((f) => now - f.born < 1.8); view.fx = fx;
       if (stageVisible && $('#modal').hidden && !document.hidden) { World.render(now, view); adapt(gap); }
       requestAnimationFrame(frame);

@@ -1,0 +1,16 @@
+{
+  "rules": {
+    "essence-island": {
+      "presence": {
+        "$room": {
+          ".read": true,
+          "$id": {
+            ".write": "$id.matches(/^[a-z0-9]{6,12}$/)",
+            ".validate": "newData.hasChildren(['n', 'x', 'y', 't']) && newData.child('n').isString() && newData.child('n').val().length <= 12 && newData.child('x').isNumber() && newData.child('x').val() >= 0 && newData.child('x').val() <= 20 && newData.child('y').isNumber() && newData.child('y').val() >= 0 && newData.child('y').val() <= 20 && newData.child('t').val() == now",
+            "$other": { ".validate": false }
+          }
+        }
+      }
+    }
+  }
+}
