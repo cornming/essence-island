@@ -23,7 +23,7 @@
 
   /* ---------- 存檔 ---------- */
   const fresh = () => ({
-    drops: 0, done: {}, days: { n: 0, last: '' }, fav: '', note: '', selectedOnce: false,
+    drops: 0, done: {}, days: { n: 0, last: '' }, fav: '', note: '', selectedOnce: false, tour: false,
     inv: {}, placed: [], ach: {}, best: {}, streak: { n: 0, last: '' },
     daily: { date: '', prog: {}, claimed: {}, bonus: false, played: {}, gameDrops: 0, talked: {} },
     stats: { earned: 0, bought: 0, games: 0, talks: 0 },
@@ -203,14 +203,54 @@
       '<section class="group"><h3 class="group-name">我的筆記</h3><ul class="blist">' + stationRow(byId('home')) + '</ul></section>' + groups;
   }
 
+  /* ---------- 新手路線：技能樹 ---------- */
+  let routeFx = null; // 剛完成 / 剛解鎖的節點，下次打開路線頁時播動畫
+
+  // 依「要先完成哪一站」排成由上往下的樹；兄弟節點左右展開
+  function treeLayout() {
+    const kids = {}, pos = {};
+    stations.forEach((b) => { (kids[b.after || 'root'] = kids[b.after || 'root'] || []).push(b); });
+    const put = (b, depth, x) => {
+      pos[b.id] = { x, d: depth };
+      const ch = (kids[b.id] || []).slice().sort((a, c) => a.order - c.order);
+      ch.forEach((c, i) => put(c, depth + 1, x + (i - (ch.length - 1) / 2) * 112));
+    };
+    (kids.root || []).forEach((b) => put(b, 0, 0));
+    const xs = Object.values(pos).map((p) => p.x), mid = (Math.min.apply(null, xs) + Math.max.apply(null, xs)) / 2;
+    const depth = Math.max.apply(null, Object.values(pos).map((p) => p.d));
+    Object.values(pos).forEach((p) => { p.x = Math.round(190 + p.x - mid); p.y = 46 + p.d * 98; });
+    return { pos, h: 46 + depth * 98 + 70 };
+  }
+
   function renderRoute() {
-    const next = stations.find((b) => !S.done[b.id]);
-    $('#pane-route').innerHTML = '<ol class="steps">' + stations.map((b) => {
-      const done = S.done[b.id], cls = done ? ' is-done' : (b === next ? ' is-next' : '');
-      return '<li class="step' + cls + '"><span class="step-no">' + pad(b.order) + '</span>' +
-        '<div class="step-body"><b>' + b.emoji + ' ' + b.name + '</b><small>' + b.summary + '</small></div>' +
-        '<span class="step-reward">' + (done ? '✓ 完成' : '+' + C.reward + ' 💧') + '</span></li>';
-    }).join('') + '</ol>';
+    const next = stations.find((b) => !S.done[b.id] && unlocked(b)), L2 = treeLayout(), pos = L2.pos;
+    const fx2 = routeFx || { done: null, unlocked: [] };
+    const edges = stations.filter((b) => b.after).map((b) => {
+      const a = pos[b.after], c = pos[b.id], y1 = a.y + 28, y2 = c.y - 28, m = (y1 + y2) / 2;
+      const st = S.done[b.after] ? (S.done[b.id] ? 'is-done' : 'is-open') : 'is-locked';
+      return '<path class="te ' + st + (fx2.unlocked.indexOf(b.id) >= 0 ? ' just-unlocked' : '') + '" d="M' + a.x + ' ' + y1 + ' C' + a.x + ' ' + m + ' ' + c.x + ' ' + m + ' ' + c.x + ' ' + y2 + '"/>';
+    }).join('');
+    const nodes = stations.map((b) => {
+      const p = pos[b.id], done = !!S.done[b.id], open = unlocked(b) && !done, isNext = next === b;
+      const cls = (done ? 'is-done' : open ? 'is-open' : 'is-locked') + (isNext ? ' is-next' : '') + (b.id === selectedId ? ' is-sel' : '') +
+        (fx2.done === b.id ? ' just-done' : '') + (fx2.unlocked.indexOf(b.id) >= 0 ? ' just-unlocked' : '');
+      return '<g class="tn ' + cls + '" data-act="rsel" data-id="' + b.id + '" tabindex="0" role="button" transform="translate(' + p.x + ' ' + p.y + ')" aria-label="第 ' + b.order + ' 步 ' + b.name + '，' + (done ? '已完成' : open ? '可以開始' : '尚未解鎖') + '">' +
+        '<circle class="tn-ring" r="31"/><circle class="tn-body" r="26"/>' +
+        '<text class="tn-ico" y="8" text-anchor="middle">' + (open || done ? b.emoji : '🔒') + '</text>' +
+        '<text class="tn-no" x="-24" y="-20" text-anchor="middle">' + b.order + '</text>' +
+        (done ? '<circle class="tn-check" cx="20" cy="-20" r="9"/><text class="tn-tick" x="20" y="-16" text-anchor="middle">✓</text>' : '') +
+        '<text class="tn-name" y="50" text-anchor="middle">' + b.name + '</text></g>';
+    }).join('');
+    const n = doneCount(), sel = selectedId && stations.find((b) => b.id === selectedId);
+    const card = sel
+      ? '<div class="rt-card"><b>' + sel.emoji + ' ' + sel.name + '</b><p>' + sel.summary + '</p>' +
+        (sel.learn ? '<ul class="learn">' + sel.learn.map((t) => '<li>' + t + '</li>').join('') + '</ul>' : '') +
+        (unlocked(sel) ? '<button type="button" class="btn btn-primary btn-block" data-act="go" data-id="' + sel.id + '">' + (S.done[sel.id] ? '再複習一次' : '前往學習 · +' + C.reward + ' 💧') + '</button>'
+          : '<p class="lock-note">先完成「' + byId(sel.after).name + '」就會解鎖。</p>') + '</div>'
+      : '<p class="rt-hint">' + (next ? '亮著的節點就是下一步：<b>' + next.emoji + ' ' + next.name + '</b>。點節點看內容。' : '🎉 全部點亮了！可以去市集和遊樂亭逛逛。') + '</p>';
+    $('#pane-route').innerHTML = '<div class="rt-head"><span><b>' + n + '</b> / ' + stations.length + ' 站點亮</span><span class="rt-title">' + titleOf() + '</span>' +
+      '<span class="bar"><i style="width:' + Math.round(n / stations.length * 100) + '%"></i></span></div>' +
+      '<svg class="rt" viewBox="0 0 380 ' + L2.h + '" role="group" aria-label="新手路線技能樹">' + edges + nodes + '</svg>' + card;
   }
 
   function renderSafety() {
@@ -224,12 +264,18 @@
     $$('.tab').forEach((t) => t.classList.toggle('is-active', t.dataset.tab === name));
     $$('.nav-link').forEach((t) => t.classList.toggle('is-active', t.dataset.go === name));
     ['stations', 'route', 'safety'].forEach((n) => { $('#pane-' + n).hidden = n !== name; });
+    if (name === 'route' && routeFx) {
+      setTimeout(() => { // 動畫播完就拿掉，不再重播
+        routeFx = null;
+        $$('#pane-route .just-done, #pane-route .just-unlocked').forEach((el) => el.classList.remove('just-done', 'just-unlocked'));
+      }, 3200);
+    }
   }
 
   function select(id) {
     selectedId = id;
     if (id && !S.selectedOnce) { S.selectedOnce = true; save(); }
-    showTab('stations'); renderStations();
+    showTab('stations'); renderStations(); renderRoute();
   }
 
   /* ---------- HUD ---------- */
@@ -445,8 +491,11 @@
     $('#mClose').addEventListener('click', closeModal);
     $('#modal').addEventListener('mousedown', (e) => { if (e.target === $('#modal')) closeModal(); });
     document.addEventListener('keydown', (e) => {
-      if (e.key !== 'Escape') return;
-      if (!$('#modal').hidden) closeModal(); else if (placing) stopPlacing();
+      const typing = /^(INPUT|TEXTAREA|SELECT)$/.test((e.target || {}).tagName || '');
+      if (e.key === 'Escape') { if (!$('#modal').hidden) closeModal(); else if (placing || tidy) stopPlacing(); return; }
+      if (typing || !$('#modal').hidden || e.ctrlKey || e.metaKey || e.altKey) return;
+      if ((e.key === 'h' || e.key === 'H') && placing) toggleFlip(); // 擺放時翻轉
+      else if ((e.key === 'e' || e.key === 'E') && (placing || tidy)) toggleTidy(); // 擺放 / 收回切換
     });
   }
 
@@ -464,6 +513,7 @@
       addFx(b, '+' + C.reward + ' 💧', '#2b8aa8');
       Sound.chime();
       toast('完成「' + b.name + '」 +' + C.reward + ' 💧', true);
+      routeFx = { done: b.id, unlocked: stations.filter((x) => x.after === b.id).map((x) => x.id) };
       stations.filter((x) => x.after === b.id).forEach((x) => toast('解鎖：' + x.name, true));
       if (stations.every((x) => S.done[x.id])) setTimeout(() => toast('🎉 你已經走遍精油島了！', true), 600);
       checkAch(); save(); renderAll();
@@ -518,42 +568,89 @@
   function openShop() { openSingle(byId('market'), '用水滴布置你的島', 'shopRoot'); Shop.mount($('#shopRoot'), api); Sound.sfx('click'); }
   function openArcade() { openSingle(byId('arcade'), '小遊戲 · 玩一玩順便複習', 'arcadeRoot'); Play.mount($('#arcadeRoot'), api); Sound.sfx('click'); }
 
-  /* --- 擺放模式：點草地放下背包裡的東西 --- */
-  let placing = null, ghost = null;
+  /* --- 擺放模式：點草地放下背包裡的東西；收回模式：點島上的東西收回背包 --- */
+  let placing = null, tidy = false, ghost = null;
 
   function tileFree(x, y) {
     return World.tileAt(x, y) === 'g' && !World.occupied(x, y) && !S.placed.some((p) => p.x === x && p.y === y);
   }
+  const placedAt = (x, y) => S.placed.findIndex((p) => p.x === x && p.y === y);
+
   function paintPlaceBar() {
-    const it = placing && shopById(placing.id);
-    $('#placeBar').hidden = !it;
-    if (it) $('#placeTxt').textContent = '擺放「' + (it.emoji || '💡') + ' ' + it.name + '」（背包還有 ' + (S.inv[it.id] || 0) + ' 個）：點島上的空草地，綠色格子可以放。';
+    const it = placing && shopById(placing.id), on = !!it || tidy;
+    $('#placeBar').hidden = !on;
+    if (!on) return;
+    const canFlip = it && it.kind !== 'pet'; // 小動物會自己轉向，不用翻
+    $('#placeFlip').hidden = !canFlip; $('#placeFlip').classList.toggle('is-on', !!(placing && placing.flip));
+    $('#placeTidy').classList.toggle('is-on', tidy);
+    $('#placeTxt').textContent = tidy
+      ? '收回模式：點島上的東西，就會放回背包。（E 切換 · Esc 結束）'
+      : '擺放「' + (it.emoji || '💡') + ' ' + it.name + '」（背包還有 ' + (S.inv[it.id] || 0) + ' 個）：點空草地，綠色格子可以放。' + (canFlip ? '（H 翻轉）' : '');
   }
   function startPlacing(id) {
     if (!(S.inv[id] > 0)) return;
-    closeModal(); placing = { id }; ghost = null; paintPlaceBar();
+    closeModal(); placing = { id, flip: false }; tidy = false; ghost = null; paintPlaceBar();
     $('#stage').scrollIntoView({ block: 'nearest' }); Sound.sfx('click'); // 手機上島在面板上方，確保看得到要擺的地方
   }
-  function stopPlacing() { placing = null; ghost = null; paintPlaceBar(); }
+  function startTidy() {
+    if (!$('#modal').hidden) closeModal();
+    placing = null; tidy = true; ghost = null; paintPlaceBar();
+    $('#stage').scrollIntoView({ block: 'nearest' }); Sound.sfx('click');
+  }
+  function stopPlacing() { placing = null; tidy = false; ghost = null; paintPlaceBar(); }
+  function toggleFlip() { if (placing) { placing.flip = !placing.flip; paintPlaceBar(); Sound.sfx('click'); } }
+  // 擺放中切到收回；收回中若背包有東西，回到擺放最近那件
+  function toggleTidy() {
+    if (tidy) { stopPlacing(); return; }
+    startTidy();
+  }
+
   function placeAt(x, y) {
     if (!placing) return;
     if (!tileFree(x, y)) { Sound.sfx('miss'); return toast('這格不能擺，換一塊空的草地'); }
-    const id = placing.id;
-    S.inv[id]--; S.placed.push({ id, x, y });
+    const id = placing.id, it = shopById(id), entry = { id, x, y };
+    if (placing.flip && it.kind !== 'pet') entry.f = 1;
+    S.inv[id]--; S.placed.push(entry);
     const p = World.iso(x + 0.5, y + 0.5, 30);
     fx.push({ wx: p.x, wy: p.y, text: '✨', color: '#e5b341', born: now });
-    Sound.sfx('place'); track('place'); save(); afterChange();
-    if (S.inv[id] > 0) paintPlaceBar(); else { stopPlacing(); toast('擺好了！到市集的「島上」分頁可以收回', true); }
+    Life.popIn(x, y, now);
+    Sound.sfx('place_' + (it.mat || 'plant')); track('place'); save(); afterChange();
+    if (S.inv[id] > 0) paintPlaceBar(); else { stopPlacing(); toast('擺好了！想挪動或收回，到市集的「島上」分頁，或按「🧽 整理島嶼」', true); }
+  }
+
+  function takeAt(x, y) {
+    const i = placedAt(x, y);
+    if (i < 0) { Sound.sfx('miss'); return toast('這格沒有東西可以收回'); }
+    const p = S.placed.splice(i, 1)[0];
+    S.inv[p.id] = (S.inv[p.id] || 0) + 1;
+    const w = World.iso(x + 0.5, y + 0.5, 30); fx.push({ wx: w.x, wy: w.y, text: '↩', color: '#2b8aa8', born: now });
+    Sound.sfx('erase'); save(); afterChange();
+    toast('「' + shopById(p.id).name + '」放回背包了', true);
   }
 
   // 更新水滴、徽章與面板（買賣、擺放、遊戲結算後呼叫）
   function afterChange() { checkAch(); updateHud(); renderStations(); }
 
   const api = {
-    S: () => S, D, C, today, earn, spend, toast, save, track, afterChange, startPlacing,
+    S: () => S, D, C, today, earn, spend, toast, save, track, afterChange, startPlacing, startTidy,
     sfx: (n) => Sound.sfx(n), catalog: D.shop,
     refresh: () => { if (L && L.notes) renderNotes(); renderStations(); updateHud(); },
   };
+
+  /* --- 新手導覽 --- */
+  const nextStation = () => stations.find((b) => !S.done[b.id] && unlocked(b)) || stations[0];
+  const tourApi = {
+    nextStation, building: byId, sfx: (n) => Sound.sfx(n),
+    done: (finished) => { // 看完或跳過都記起來，之後不再自動跳出；看完的話順手選好下一站
+      S.tour = true; save();
+      if (finished) { select(nextStation().id); toast('點亮著的建築，或按右邊的「前往學習」', true); }
+    },
+  };
+  function startTour() {
+    if (!$('#modal').hidden) closeModal();
+    if (placing || tidy) stopPlacing();
+    Tour.start(tourApi);
+  }
 
   /* --- 居民聊天與小動物 --- */
   function addFxAt(wx, wy, text, color) { fx.push({ wx, wy, text, color, born: now }); }
@@ -589,6 +686,7 @@
     selectedId = first ? 'kit' : null;
     dailyLogin(); checkAch(); save();
     renderAll();
+    if (first && !S.tour) setTimeout(() => { if (member === id && !Tour.isOn()) startTour(); }, 1200); // 第一次進島：自動帶導覽
     if (first) toast('歡迎來到精油島！先從「入門小舖」開始第一步', true);
     else toast('歡迎回來，' + titleOf() + '！');
   }
@@ -619,9 +717,11 @@
     const ptrs = new Map();   // 目前按著的手指（或滑鼠）：pointerId → 畫布內座標
     let drag = null, pinch = null;
     const pos = (e) => { const r = canvas.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
-    const aim = (p) => { // 擺放模式：預覽格子
+    const aim = (p) => { // 擺放 / 收回模式：預覽格子
       const t = World.toTile(p.x, p.y);
-      ghost = placing ? { x: t.x, y: t.y, id: placing.id, valid: tileFree(t.x, t.y) } : null;
+      if (placing) ghost = { x: t.x, y: t.y, id: placing.id, valid: tileFree(t.x, t.y), flip: placing.flip };
+      else if (tidy) ghost = { x: t.x, y: t.y, tidy: true, valid: placedAt(t.x, t.y) >= 0 };
+      else ghost = null;
     };
     const two = () => { // 前兩根手指的中點與距離
       const [a, b] = Array.from(ptrs.values());
@@ -633,7 +733,7 @@
       try { canvas.setPointerCapture(e.pointerId); } catch (er) { /* 某些瀏覽器在合成事件上會丟錯 */ }
       if (ptrs.size === 1) {
         drag = { x: p.x, y: p.y, moved: false, slop: e.pointerType === 'mouse' ? 4 : 10 }; // 手指比滑鼠抖，容許位移大一點
-        if (placing) aim(p);
+        if (placing || tidy) aim(p);
       } else if (ptrs.size === 2) { drag = null; pinch = two(); canvas.classList.add('is-drag'); ghost = null; }
     });
 
@@ -653,7 +753,7 @@
           World.panBy(dx, dy); drag.x = p.x; drag.y = p.y;
         }
       } else if (e.pointerType === 'mouse') { // 只有滑鼠有「滑過」
-        if (placing) { aim(p); canvas.classList.add('is-pointer'); return; }
+        if (placing || tidy) { aim(p); canvas.classList.add('is-pointer'); return; }
         const b = World.pick(p.x, p.y), w = World.toWorld(p.x, p.y);
         hoverId = b ? b.id : null;
         canvas.classList.toggle('is-pointer', !!b || !!Life.pickNpc(w) || !!Life.pickPet(w, now));
@@ -672,9 +772,9 @@
       }
       if (!drag) return;
       const moved = drag.moved; drag = null; canvas.classList.remove('is-drag');
-      if (moved || e.type !== 'pointerup') { if (placing && e.pointerType !== 'mouse') ghost = null; return; }
+      if (moved || e.type !== 'pointerup') { if ((placing || tidy) && e.pointerType !== 'mouse') ghost = null; return; }
       const p = pos(e);
-      if (placing) { const t = World.toTile(p.x, p.y); aim(p); placeAt(t.x, t.y); if (e.pointerType !== 'mouse') ghost = null; return; }
+      if (placing || tidy) { const t = World.toTile(p.x, p.y); aim(p); if (placing) placeAt(t.x, t.y); else takeAt(t.x, t.y); if (e.pointerType !== 'mouse') ghost = null; return; }
       const w = World.toWorld(p.x, p.y), npc = Life.pickNpc(w), pet = npc ? null : Life.pickPet(w, now);
       if (npc) return talk(npc);
       if (pet) return petPlay(pet);
@@ -682,7 +782,7 @@
     };
     canvas.addEventListener('pointerup', end);
     canvas.addEventListener('pointercancel', end);
-    canvas.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse' && !drag) { hoverId = null; if (placing) ghost = null; } });
+    canvas.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse' && !drag) { hoverId = null; if (placing || tidy) ghost = null; } });
     canvas.addEventListener('wheel', (e) => { e.preventDefault(); const p = pos(e); World.zoomBy(e.deltaY < 0 ? 1.12 : 1 / 1.12, p.x, p.y); }, { passive: false });
     canvas.addEventListener('contextmenu', (e) => e.preventDefault()); // 手機長按不要跳出選單
     ['gesturestart', 'gesturechange'].forEach((n) => canvas.addEventListener(n, (e) => e.preventDefault())); // iOS Safari 的整頁縮放
@@ -694,13 +794,21 @@
       if (el.dataset.tab) return showTab(el.dataset.tab);
       const b = byId(el.dataset.id);
       if (el.dataset.act === 'select') select(b.id);
+      else if (el.dataset.act === 'rsel') { selectedId = b.id; Sound.sfx('click'); renderRoute(); renderStations(); }
       else if (el.dataset.act === 'go') visit(b);
+    });
+    $('#pane-route').addEventListener('keydown', (e) => { // 節點可用鍵盤操作
+      const g = e.target.closest && e.target.closest('.tn');
+      if (g && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); selectedId = g.dataset.id; renderRoute(); renderStations(); const again = $('.tn[data-id="' + g.dataset.id + '"]'); if (again) again.focus(); }
     });
     $$('.nav-link').forEach((t) => t.addEventListener('click', () => { showTab(t.dataset.go); $('#panel').scrollIntoView({ block: 'nearest' }); }));
     $('#zoomIn').addEventListener('click', () => World.zoomBy(1.2));
     $('#zoomOut').addEventListener('click', () => World.zoomBy(1 / 1.2));
     $('#zoomReset').addEventListener('click', () => World.resetView());
+    $('#tourBtn').addEventListener('click', startTour);
     $('#placeDone').addEventListener('click', stopPlacing);
+    $('#placeFlip').addEventListener('click', toggleFlip);
+    $('#placeTidy').addEventListener('click', toggleTidy);
     const flip = () => { Life.lockWeather(false); Life.cycleWeather(now); Sound.sfx('click'); paintWeather(true); };
     $('#hudWeather').addEventListener('click', flip);
     $('#hudWeather').addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); flip(); } });

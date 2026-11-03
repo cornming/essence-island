@@ -10,7 +10,8 @@
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="css/oil.css">
   <link rel="stylesheet" href="css/stories.css?v=1">
-  <link rel="stylesheet" href="css/life.css?v=1">
+  <link rel="stylesheet" href="css/life.css?v=2">
+  <link rel="stylesheet" href="css/tour.css?v=1">
 </head>
 <body>
 
@@ -39,6 +40,7 @@
     </nav>
     <div class="player">
       <span class="player-name" id="playerName"></span>
+      <button type="button" class="btn btn-ghost" id="tourBtn" title="新手導覽">導覽</button>
       <button type="button" class="btn btn-ghost" id="logoutBtn">登出</button>
     </div>
   </header>
@@ -71,7 +73,7 @@
           <button type="button" id="musicBtn" aria-label="背景音樂" aria-pressed="true" title="背景音樂">🎵</button>
         </div>
         <p class="hint">拖曳移動 · 滾輪縮放 · 點建築開始學習 · 點居民和小動物聊天</p>
-        <div class="placebar" id="placeBar" hidden><span id="placeTxt"></span><button type="button" class="btn btn-primary" id="placeDone">完成</button></div>
+        <div class="placebar" id="placeBar" hidden><span id="placeTxt"></span><span class="placebtns"><button type="button" class="btn" id="placeFlip" title="翻轉左右（H）">↔ 翻轉</button><button type="button" class="btn" id="placeTidy" title="收回模式（E）">🧽 收回</button><button type="button" class="btn btn-primary" id="placeDone">完成</button></span></div>
       </div>
 
       <aside class="panel" id="panel">
@@ -104,17 +106,33 @@
     </div>
   </div>
 
+  <!-- 新手導覽 -->
+  <div class="tour" id="tour" hidden>
+    <div class="tour-block"></div>
+    <div class="tour-spot" id="tourSpot"></div>
+    <div class="tour-card" id="tourCard" role="dialog" aria-modal="true" aria-labelledby="tourTitle">
+      <small id="tourStep"></small>
+      <h4 id="tourTitle"></h4>
+      <p id="tourText"></p>
+      <div class="tour-foot">
+        <button type="button" class="st-link" id="tourSkip">跳過導覽</button>
+        <span><button type="button" class="btn" id="tourPrev">上一步</button> <button type="button" class="btn btn-primary" id="tourNext">下一步</button></span>
+      </div>
+    </div>
+  </div>
+
   <div class="toasts" id="toasts" aria-live="polite"></div>
 
-  <script src="js/data.js?v=5"></script>
-  <script src="js/world.js?v=8"></script>
-  <script src="js/audio.js?v=5"></script>
+  <script src="js/data.js?v=9"></script>
+  <script src="js/world.js?v=9"></script>
+  <script src="js/audio.js?v=9"></script>
   <script src="js/plan.js?v=5"></script>
   <script src="js/stories.js?v=6"></script>
   <script src="js/quest.js?v=7"></script>
-  <script src="js/life.js?v=8"></script>
-  <script src="js/shop.js?v=7"></script>
+  <script src="js/life.js?v=9"></script>
+  <script src="js/shop.js?v=9"></script>
   <script src="js/play.js?v=7"></script>
-  <script src="js/app.js?v=8"></script>
+  <script src="js/tour.js?v=9"></script>
+  <script src="js/app.js?v=9"></script>
 </body>
 </html>

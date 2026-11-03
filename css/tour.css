@@ -1,0 +1,15 @@
+/* 新手導覽 */
+.tour { position: fixed; inset: 0; z-index: 80; }
+.tour[hidden] { display: none; }
+.tour-block { position: absolute; inset: 0; }
+.tour.is-center .tour-block { background: rgba(20, 40, 52, .6); }
+.tour-spot { position: fixed; border-radius: 16px; box-shadow: 0 0 0 100vmax rgba(20, 40, 52, .6), inset 0 0 0 3px #ffd24a; pointer-events: none; animation: tour-glow 1.6s ease-in-out infinite; }
+@keyframes tour-glow { 50% { box-shadow: 0 0 0 100vmax rgba(20, 40, 52, .6), inset 0 0 0 3px #fff; } }
+@media (prefers-reduced-motion: reduce) { .tour-spot { animation: none; } }
+.tour-card { position: fixed; padding: 16px 18px; border-radius: 18px; background: #fff; box-shadow: 0 12px 40px rgba(0, 0, 0, .35); display: grid; gap: 4px; }
+.tour-card small { font-size: 11px; letter-spacing: .12em; color: var(--sea-deep); font-weight: 700; }
+.tour-card h4 { margin: 0; font-family: var(--serif); font-size: 19px; font-weight: 500; }
+.tour-card p { margin: 2px 0 8px; font-size: 14px; line-height: 1.7; color: #44606f; }
+.tour-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.tour-foot .btn { padding: 6px 16px; }
+.tour-foot [hidden] { display: none; }

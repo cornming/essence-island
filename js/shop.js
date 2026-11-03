@@ -35,7 +35,7 @@
       } else if (tab === 'bag') {
         body = bag.length ? '<div class="sh-grid">' + bag.map((it) => card(it, 'bag')).join('') + '</div>' : '<p class="empty-list">背包是空的，先到「商品」逛逛吧。</p>';
       } else {
-        body = placed.length ? '<div class="sh-grid">' + placed.map((p, i) => card(by(p.id), 'placed', { x: p.x, y: p.y, i })).join('') + '</div>' : '<p class="empty-list">島上還沒有擺設。買了東西就能到島上擺放。</p>';
+        body = placed.length ? '<div class="st-actions"><button type="button" class="btn btn-primary" data-sh="tidy">🧽 到島上整理（點東西收回）</button></div><div class="sh-grid">' + placed.map((p, i) => card(by(p.id), 'placed', { x: p.x, y: p.y, i })).join('') + '</div>' : '<p class="empty-list">島上還沒有擺設。買了東西就能到島上擺放。</p>';
       }
       root.innerHTML = '<div class="tool"><div class="sh-head"><h3>水滴市集</h3><span class="sh-wallet">你有 <b>' + s.drops + '</b> 💧</span></div>' +
         '<div class="pl-steps">' + tabs + '</div>' + body +
@@ -54,6 +54,7 @@
         api.sfx('coin'); api.toast('買了「' + it.name + '」，已放進背包', true);
         api.track('buy'); api.save(); render();
       } else if (a === 'place') { api.startPlacing(b.dataset.id); }
+      else if (a === 'tidy') { api.startTidy(); }
       else if (a === 'take') {
         const s = S(), p = s.placed[+b.dataset.i]; if (!p) return;
         s.placed.splice(+b.dataset.i, 1); s.inv[p.id] = owned(p.id) + 1;

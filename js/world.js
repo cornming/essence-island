@@ -661,7 +661,7 @@
 
   global.World = {
     init, resize, render, pick, findPath, panBy, zoomBy, resetView, bubblePos, iso,
-    toWorld, toTile, tileAt, ctx: () => ctx, size: () => ({ cols, rows }), nightAlpha, prof: P, dprCap: () => dprCap, setDprCap: (c) => { dprCap = c; resize(); }, emoji: emojiSprite, zoomLevel: () => cam.z,
+    toWorld, toTile, tileAt, toScreen: (wx, wy) => ({ x: (wx - cam.cx) * zoom() + W / 2, y: (wy - cam.cy) * zoom() + H / 2 }), ctx: () => ctx, size: () => ({ cols, rows }), nightAlpha, prof: P, dprCap: () => dprCap, setDprCap: (c) => { dprCap = c; resize(); }, emoji: emojiSprite, zoomLevel: () => cam.z,
     occupied: (x, y) => occ.has(x + ',' + y),
     walkable: (x, y) => !!WALKABLE[tileAt(x, y)],
   };

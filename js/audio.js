@@ -144,7 +144,23 @@
         o.connect(e); e.connect(ac.destination);
         o.start(t); o.stop(t + dur + 0.05);
       };
+      // 雜訊短音（落地、摩擦的質感）：fq 是低通截止頻率
+      const noise = (dt, dur, vol, fq) => {
+        const n = Math.floor(ac.sampleRate * dur), buf = ac.createBuffer(1, n, ac.sampleRate), d = buf.getChannelData(0);
+        for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / n);
+        const src = ac.createBufferSource(), f = ac.createBiquadFilter(), e = ac.createGain();
+        src.buffer = buf; f.type = 'lowpass'; f.frequency.value = fq;
+        e.gain.setValueAtTime(vol, t0 + dt); e.gain.exponentialRampToValueAtTime(0.0001, t0 + dt + dur);
+        src.connect(f); f.connect(e); e.connect(ac.destination); src.start(t0 + dt);
+      };
       switch (name) {
+        // 擺放：不同材質不同聲音
+        case 'place_plant': noise(0, 0.14, 0.09, 1400); tone(0, 330, 0.12, 'sine', 0.06, 200); break;
+        case 'place_wood': tone(0, 240, 0.07, 'triangle', 0.09, 170); tone(0.07, 190, 0.08, 'triangle', 0.07, 140); break;
+        case 'place_stone': tone(0, 150, 0.2, 'sine', 0.11, 70); noise(0, 0.1, 0.07, 500); break;
+        case 'place_metal': tone(0, 1180, 0.45, 'triangle', 0.05); tone(0, 1770, 0.3, 'sine', 0.025); noise(0, 0.04, 0.05, 3000); break;
+        case 'place_pet': tone(0, 600, 0.09, 'sine', 0.07, 1000); tone(0.1, 880, 0.1, 'sine', 0.06, 1300); break;
+        case 'erase': tone(0, 520, 0.12, 'triangle', 0.06, 260); noise(0, 0.08, 0.04, 2000); break;
         case 'click': tone(0, 660, 0.06, 'triangle', 0.05); break;
         case 'flip': tone(0, 520, 0.09, 'triangle', 0.06, 760); break;
         case 'match': tone(0, 784, 0.12, 'triangle', 0.07); tone(0.09, 988, 0.2, 'triangle', 0.07); break;

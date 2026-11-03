@@ -84,3 +84,46 @@
   .pg-opts { grid-template-columns: 1fr; }
   .placebar { font-size: 13px; }
 }
+
+/* 擺放列的按鈕 */
+.placebtns { display: flex; gap: 6px; flex: none; flex-wrap: wrap; justify-content: flex-end; }
+.placebar .btn { padding: 6px 12px; }
+.placebar .btn[hidden] { display: none; }
+.placebar .btn.is-on { background: var(--gold); border-color: var(--gold); color: var(--ink); }
+@media (max-width: 560px) { .placebar { flex-direction: column; align-items: stretch; } .placebtns { justify-content: stretch; } .placebtns .btn { flex: 1; } }
+
+/* 新手路線：技能樹 */
+.rt-head { display: flex; align-items: center; gap: 8px 10px; flex-wrap: wrap; font-size: 14px; margin-bottom: 6px; }
+.rt-head .bar { flex-basis: 100%; }
+.rt-title { color: var(--sea-deep); background: var(--sea-soft); border-radius: 999px; padding: 1px 10px; font-size: 12px; }
+.rt { width: 100%; height: auto; display: block; overflow: visible; }
+.te { fill: none; stroke: #ddd7c3; stroke-width: 4; stroke-linecap: round; }
+.te.is-done { stroke: var(--ok); }
+.te.is-open { stroke: var(--gold); stroke-dasharray: 2 9; animation: te-flow 1s linear infinite; }
+@keyframes te-flow { to { stroke-dashoffset: -11; } }
+.te.just-unlocked { stroke-dasharray: 220; stroke-dashoffset: 220; animation: te-draw 1.1s ease .2s forwards; }
+@keyframes te-draw { to { stroke-dashoffset: 0; } }
+.tn { cursor: pointer; outline: none; }
+.tn-body { fill: #ece8d8; stroke: #cfc8b0; stroke-width: 3; }
+.tn.is-done .tn-body { fill: #f1f8f2; stroke: var(--ok); }
+.tn.is-open .tn-body { fill: #fff; stroke: var(--coral); }
+.tn.is-locked { opacity: .72; }
+.tn-ring { fill: none; stroke: transparent; stroke-width: 3; transform-box: fill-box; transform-origin: center; }
+.tn.is-next .tn-ring { stroke: var(--coral); animation: tn-pulse 1.7s ease-out infinite; }
+@keyframes tn-pulse { from { transform: scale(.9); opacity: .8; } to { transform: scale(1.4); opacity: 0; } }
+.tn.is-sel .tn-body { stroke: var(--sea-deep); stroke-width: 5; }
+.tn:focus-visible .tn-body { stroke: var(--sea); stroke-width: 5; }
+.tn:hover .tn-body { filter: brightness(.97); }
+.tn-ico { font-size: 22px; }
+.tn-name { font-size: 12px; fill: var(--ink); font-weight: 600; }
+.tn-no { font-size: 11px; fill: var(--muted); font-family: var(--serif); }
+.tn-check { fill: var(--ok); }
+.tn-tick { fill: #fff; font-size: 11px; font-weight: 700; }
+.tn.just-unlocked .tn-body { animation: tn-pop .9s cubic-bezier(.2, 1.6, .4, 1) 1s both; transform-box: fill-box; transform-origin: center; }
+.tn.just-done .tn-check, .tn.just-done .tn-tick { animation: tn-pop .8s cubic-bezier(.2, 1.6, .4, 1) .1s both; transform-box: fill-box; transform-origin: center; }
+@keyframes tn-pop { from { transform: scale(.4); } to { transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) { .te.is-open, .tn.is-next .tn-ring, .tn.just-unlocked .tn-body, .tn.just-done .tn-check, .tn.just-done .tn-tick, .te.just-unlocked { animation: none; stroke-dashoffset: 0; } }
+.rt-card { margin-top: 10px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 14px; background: #fff; display: grid; gap: 4px; }
+.rt-card p { margin: 0; font-size: 14px; color: #44606f; }
+.rt-hint { font-size: 14px; color: #44606f; text-align: center; margin: 8px 0 0; }
+.tn-name { paint-order: stroke; stroke: #fff; stroke-width: 4px; stroke-linejoin: round; }

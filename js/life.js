@@ -18,6 +18,7 @@
   let night = 0;
   const wx = { kind: 'clear', until: 0 };
   const pops = new Map();   // 小動物被摸時的跳動 { "x,y": 開始時間 }
+  const born = new Map();   // 剛放下的東西的彈出動畫 { "x,y": 開始時間 }
   const iso = (x, y, z) => World.iso(x, y, z);
   const ctx = () => World.ctx();
 
@@ -145,15 +146,21 @@
     circle(c, p.x, p.y - 37, 3.4, on ? '#ffe08a' : '#e7e2cc');
   }
 
-  function drawItem(c, it, p, t, alpha, pop) {
+  // 剛放下時的彈性縮放：從 0 彈到略大於 1 再回到 1
+  const elastic = (age) => (age >= 0.6 ? 1 : age <= 0 ? 0 : 1 - Math.exp(-7 * (age / 0.6)) * Math.cos((age / 0.6) * 15));
+
+  function drawItem(c, it, p, t, alpha, pop, born0) {
     c.save();
     if (alpha != null) c.globalAlpha = alpha;
-    if (it.id === 'lamp') { drawLamp(c, p, night > 0.1); c.restore(); return; }
-    shadow(c, p.x, p.y, it.size * 0.42, it.size * 0.17);
+    const sc = born0 != null ? elastic(t - born0) : 1; // 彈出動畫以腳下為中心
+    c.translate(p.x, p.y); c.scale(sc, sc);
+    if (p.flip) c.scale(-1, 1); // 擺放時可以翻轉左右
+    if (it.id === 'lamp') { drawLamp(c, { x: 0, y: 0 }, night > 0.1); c.restore(); return; }
+    shadow(c, 0, 0, it.size * 0.42, it.size * 0.17);
     const pet = it.kind === 'pet';
     const hop = pop ? Math.abs(Math.sin((t - pop) * 11)) * 9 * Math.max(0, 1 - (t - pop) / 0.7) : 0;
     const bob = pet ? Math.abs(Math.sin(t * 3 + p.x)) * 1.2 : 0;
-    c.translate(p.x, p.y - hop - bob);
+    c.translate(0, -hop - bob);
     if (!pet && it.kind === 'plant' && it.size < 40) c.rotate(Math.sin(t * 1.6 + p.x * 0.1) * 0.05);
     if (pet && p.dir < 0) c.scale(-1, 1);
     const sp = World.emoji(it.emoji, it.size); // emoji 先畫成貼圖，每幀只貼圖（fillText 很貴）
@@ -179,7 +186,7 @@
     c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); c.lineTo(d.x, d.y); c.lineTo(e.x, e.y); c.closePath();
     c.fillStyle = g.valid ? 'rgba(80,200,120,.35)' : 'rgba(235,90,70,.35)'; c.fill();
     c.lineWidth = 2; c.strokeStyle = g.valid ? '#3f9a55' : '#d4573a'; c.stroke();
-    if (it) drawItem(c, it, { ...iso(g.x + 0.5, g.y + 0.55, 0), dir: 1 }, t, 0.7);
+    if (it && !g.tidy) drawItem(c, it, { ...iso(g.x + 0.5, g.y + 0.55, 0), dir: 1, flip: g.flip }, t, 0.7);
   }
 
   function items(t) {
@@ -187,7 +194,9 @@
     (hook.placed ? hook.placed() : []).forEach((pl) => {
       const it = hook.item(pl.id); if (!it) return;
       const pp = petPos(pl, t), p = iso(pp.x, pp.y, 0);
-      out.push({ d: pp.x + pp.y + 1.03, f: () => drawItem(c, it, { x: p.x, y: p.y, dir: pp.dir }, t, null, pops.get(pl.x + ',' + pl.y)) });
+      const key = pl.x + ',' + pl.y, b0 = born.get(key);
+      if (b0 != null && t - b0 > 0.7) born.delete(key);
+      out.push({ d: pp.x + pp.y + 1.03, f: () => drawItem(c, it, { x: p.x, y: p.y, dir: pp.dir, flip: !!pl.f && it.kind !== 'pet' }, t, null, pops.get(key), b0) });
     });
     npcs.forEach((n) => out.push({ d: n.fx + n.fy + 1.02, f: () => drawNpc(n, t) }));
     const g = hook.ghost && hook.ghost();
@@ -323,9 +332,11 @@
   }
   function say(n, text, t) { n.say = { text, until: t + 4.5 }; n.moving = false; }
   function pop(pl, t) { pops.set(pl.x + ',' + pl.y, t); }
+  function popIn(x, y, t) { born.set(x + ',' + y, t); }
+  const scaleAt = (x, y, t) => { const b0 = born.get(x + ',' + y); return b0 == null ? 1 : elastic(t - b0); }; // 目前的彈出縮放（沒有動畫時為 1）
 
   global.Life = {
-    init, update, items, over, glow, screen, pickNpc, pickPet, say, pop, setWeather, cycleWeather,
+    init, update, items, over, glow, screen, pickNpc, pickPet, say, pop, popIn, scaleAt, setWeather, cycleWeather,
     lockWeather(on) { wx.locked = !!on; },
     weather: () => wx.kind, info: (k) => WEATHERS[k || wx.kind], WEATHERS, npcs: () => npcs, night: () => night,
   };
