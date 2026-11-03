@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>精油島 · 一步一步熟悉精油</title>
+  <meta name="description" content="登入會員編號，跟著小人走遍精油島：認識、稀釋、擴香、配方、手作，一站一站學會精油的應用。">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;600&display=swap">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/oil.css">
+</head>
+<body>
+
+  <!-- 會員編號登入（對應參考站的登入頁） -->
+  <div class="gate" id="gate" hidden>
+    <form class="gate-box" id="gateForm" autocomplete="off" novalidate>
+      <div class="gate-logo">ESSENTIAL OIL ISLAND · 精油島</div>
+      <h1 class="gate-title">夥伴專屬學習島</h1>
+      <p class="gate-sub">請輸入您的會員編號登入</p>
+      <input id="memberInput" type="text" inputmode="numeric" maxlength="12" placeholder="會員編號" aria-label="會員編號" aria-describedby="gateErr">
+      <p class="gate-err" id="gateErr" role="alert"></p>
+      <button type="submit" class="btn btn-primary btn-block" id="gateBtn">登入</button>
+      <p class="gate-note">學習進度只會存在這台裝置上，依會員編號分開記錄。</p>
+    </form>
+  </div>
+
+  <header class="topbar">
+    <a class="brand" href="#top" aria-label="精油島首頁">
+      <span class="brand-mark">島.</span>
+      <span class="brand-text"><strong>精油島</strong><small>精 油 學 習 地 圖</small></span>
+    </a>
+    <nav class="nav" aria-label="主選單">
+      <button type="button" class="nav-link is-active" data-go="stations">學習站</button>
+      <button type="button" class="nav-link" data-go="route">新手路線</button>
+      <button type="button" class="nav-link" data-go="safety">安全須知</button>
+    </nav>
+    <div class="player">
+      <span class="player-name" id="playerName"></span>
+      <button type="button" class="btn btn-ghost" id="logoutBtn">登出</button>
+    </div>
+  </header>
+
+  <main id="top">
+    <section class="intro">
+      <p class="eyebrow">ESSENTIAL OIL ISLAND · 精油島</p>
+      <h1>從一瓶精油開始，<span>走遍整座小島。</span></h1>
+      <p class="lead">認識、稀釋、擴香、配方、手作。點一棟建築，小人會帶你走進去，一站一站學會怎麼用。</p>
+    </section>
+
+    <section class="layout">
+      <div class="stage" id="stage">
+        <canvas id="island" aria-label="等角視角的精油島，可點選學習站"></canvas>
+
+        <div class="hud" id="hud">
+          <div class="chip"><span class="chip-ico">💧</span><b id="hudDrops">0</b></div>
+          <div class="chip chip-wide">
+            <span class="chip-ico">🌿</span><b id="hudTitle">精油新芽</b>
+            <span class="bar"><i id="hudProg"></i></span>
+          </div>
+          <div class="chip"><span class="chip-ico">📅</span><b id="hudDays">0 / 30 天</b></div>
+        </div>
+
+        <div class="zoom" aria-label="縮放">
+          <button type="button" id="zoomIn" aria-label="放大">＋</button>
+          <button type="button" id="zoomOut" aria-label="縮小">－</button>
+          <button type="button" id="zoomReset" aria-label="重置視角">⌂</button>
+          <button type="button" id="musicBtn" aria-label="背景音樂" aria-pressed="true" title="背景音樂">🎵</button>
+        </div>
+        <p class="hint">拖曳移動 · 滾輪縮放 · 點建築開始學習</p>
+      </div>
+
+      <aside class="panel" id="panel">
+        <div class="tabs" role="tablist">
+          <button type="button" role="tab" class="tab is-active" data-tab="stations">學習站</button>
+          <button type="button" role="tab" class="tab" data-tab="route">新手路線</button>
+          <button type="button" role="tab" class="tab" data-tab="safety">安全須知</button>
+        </div>
+        <div class="pane" id="pane-stations"></div>
+        <div class="pane" id="pane-route" hidden></div>
+        <div class="pane" id="pane-safety" hidden></div>
+      </aside>
+    </section>
+  </main>
+
+  <!-- 課程視窗 -->
+  <div class="modal" id="modal" hidden>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="mTitle">
+      <header class="modal-head">
+        <span class="modal-ico" id="mIco" aria-hidden="true"></span>
+        <div class="modal-titles"><h2 id="mTitle"></h2><small id="mSub"></small></div>
+        <button type="button" class="modal-x" id="mClose" aria-label="關閉">✕</button>
+      </header>
+      <div class="modal-dots" id="mDots" aria-hidden="true"></div>
+      <div class="modal-body" id="mBody"></div>
+      <footer class="modal-foot">
+        <button type="button" class="btn" id="mPrev">上一步</button>
+        <button type="button" class="btn btn-primary" id="mNext">下一步</button>
+      </footer>
+    </div>
+  </div>
+
+  <div class="toasts" id="toasts" aria-live="polite"></div>
+
+  <script src="js/data.js?v=4"></script>
+  <script src="js/world.js?v=4"></script>
+  <script src="js/audio.js?v=4"></script>
+  <script src="js/app.js?v=4"></script>
+</body>
+</html>
