@@ -89,10 +89,10 @@ repo 裡**沒有任何真實故事**；內容屬於團隊內部學習資料，�
 - **兩種傳輸**（`js/presence.js`）：
   - 沒設定時用 `BroadcastChannel`，只看得到**同一個瀏覽器的其他分頁**（示範用）。這時只有看到其他分頁才會顯示晶片。
   - 在 `config.presence.firebaseUrl` 填 Firebase Realtime Database 的網址（`https://…firebasedatabase.app`），所有夥伴就會互相看到。用的是 REST API，不需要 SDK，也沒有建置步驟。`room` 可以分隊伍，不同 room 互相看不到。
-- **設定 Firebase**：建一個 Realtime Database，把 `docs/presence-rules.json` 貼到「規則」（限制只能寫 `essence-island/presence/<room>/<id>`，欄位型別、暱稱長度與座標範圍都有驗證，時間由伺服器填），再把網址填進 `data.js`。
+- **設定 Firebase**：照 [`docs/firebase-setup.md`](docs/firebase-setup.md) 的步驟（建 Realtime Database、貼 `docs/presence-rules.json` 規則、把網址填進 `data.js`），約 5 分鐘。規則限制只能寫 `essence-island/presence/<room>/<id>`，欄位型別、暱稱長度與座標範圍都有驗證，時間由伺服器填。
 - **別人傳來的資料一律不信任**：驗證 id 與欄位型別、座標夾回島內、暱稱去掉 `< > & " '` 並限制 10 字、最多同時處理 60 筆；畫面只用 canvas 文字與 `textContent`。伺服器暫時出錯時保持原名單，不會全員「離線」。
 - **省電與清理**：分頁在背景就先離線，回來再連；離開時刪掉自己的紀錄；久沒更新的人 28 秒後從畫面消失，資料庫裡的殭屍紀錄會被看到的人順手刪掉。
-- **要注意**：公開網站的資料庫規則擋不住有心人灌垃圾資料，請在 Firebase 設用量與預算警示。Firebase 這條路我用模擬的 REST 伺服器測過，沒有連過真的 Firebase。
+- **要注意**：公開網站的資料庫規則擋不住有心人灌垃圾資料，請在 Firebase 設用量與預算警示。規則與用戶端已用 Firebase 官方的 Database Emulator 端對端驗證過（兩個瀏覽器、正式規則），但沒有連過真正的雲端資料庫。
 
 ## 手機操作與效能
 

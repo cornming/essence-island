@@ -5,8 +5,12 @@
         "$room": {
           ".read": true,
           "$id": {
-            ".write": "$id.matches(/^[a-z0-9]{6,12}$/)",
-            ".validate": "newData.hasChildren(['n', 'x', 'y', 't']) && newData.child('n').isString() && newData.child('n').val().length <= 12 && newData.child('x').isNumber() && newData.child('x').val() >= 0 && newData.child('x').val() <= 20 && newData.child('y').isNumber() && newData.child('y').val() >= 0 && newData.child('y').val() <= 20 && newData.child('t').val() == now",
+            ".write": "$room.matches(/^[A-Za-z0-9_-]{1,20}$/) && $id.matches(/^[a-z0-9]{6,12}$/)",
+            ".validate": "newData.hasChildren(['n', 'x', 'y', 't'])",
+            "n": { ".validate": "newData.isString() && newData.val().length <= 12" },
+            "x": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 20" },
+            "y": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 20" },
+            "t": { ".validate": "newData.val() == now" },
             "$other": { ".validate": false }
           }
         }
