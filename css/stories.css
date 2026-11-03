@@ -1,0 +1,55 @@
+/* 夥伴的故事 */
+.st-loading { padding: 28px 0; text-align: center; color: var(--muted); }
+.st-bar { display: flex; gap: 10px; align-items: center; margin: 6px 0 4px; flex-wrap: wrap; }
+.st-q { flex: 1 1 220px; min-width: 0; padding: 10px 14px; border: 1px solid var(--line); border-radius: 999px; font: inherit; color: var(--ink); background: #fff; }
+.st-q:focus { outline: 2px solid var(--sea); outline-offset: 1px; }
+.st-count { font-size: 13px; color: var(--muted); }
+.st-src { font-size: 12px; color: var(--muted); margin: 2px 0 10px; word-break: break-all; }
+.st-link { background: none; border: 0; padding: 0; font: inherit; color: var(--sea-deep); text-decoration: underline; cursor: pointer; }
+
+.st-list { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 360px), 1fr)); align-items: start; }
+.st-card { border: 1px solid var(--line); border-radius: 16px; background: #fff; padding: 14px 16px; display: grid; gap: 8px; min-width: 0; animation: st-in .25s ease both; }
+@keyframes st-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .st-card { animation: none; } }
+.st-head { display: flex; gap: 10px; align-items: center; }
+.st-av { flex: none; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: var(--sea-soft); color: var(--sea-deep); font-family: var(--serif); font-weight: 600; }
+.st-who { display: flex; flex-wrap: wrap; gap: 2px 8px; align-items: baseline; min-width: 0; }
+.st-name { font-family: var(--serif); font-size: 16px; }
+.st-rank { font-size: 12px; color: #7a5a14; background: #fbf1d4; border-radius: 999px; padding: 1px 8px; }
+.st-meta { margin: 0; font-size: 12px; color: var(--muted); }
+.st-hook { margin: 0; font-weight: 600; line-height: 1.55; }
+.st-quote { margin: 0; padding: 8px 12px; border-left: 3px solid var(--gold); background: #fffaf0; border-radius: 0 10px 10px 0; font-size: 14px; line-height: 1.65; color: #5a4a22; }
+.st-cols { display: grid; gap: 8px; }
+.st-col h5 { margin: 0 0 2px; font-size: 12px; letter-spacing: .08em; color: var(--sea-deep); }
+.st-col ul { margin: 0; padding-left: 18px; font-size: 13px; color: #44606f; }
+.st-col li { margin: 1px 0; }
+.st-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.st-tag { border: 1px solid var(--line); background: #fff; border-radius: 999px; padding: 2px 10px; font: inherit; font-size: 12px; color: var(--ink); cursor: pointer; }
+.st-tag:hover { border-color: var(--sea); background: var(--sea-soft); }
+.st-tag.is-pain { background: #fff3ee; }
+.st-tag.is-skill { background: #eef6ff; }
+.st-tag.is-stage { background: #f3f0ff; }
+.st-tag.is-group { background: #f1f8f2; }
+.st-tag.is-prod { background: #fffaf0; }
+.st-full summary { cursor: pointer; font-size: 13px; color: var(--sea-deep); font-weight: 600; }
+.st-full dl { margin: 8px 0 0; display: grid; gap: 6px; font-size: 13px; line-height: 1.65; }
+.st-full dt { font-weight: 700; color: var(--ink); }
+.st-full dd { margin: 0; color: #44606f; white-space: pre-wrap; }
+.st-foot { padding-top: 2px; }
+.st-play { display: inline-block; font-size: 13px; font-weight: 600; color: #fff; background: var(--coral-dk); border-radius: 999px; padding: 5px 14px; text-decoration: none; }
+.st-play:hover { filter: brightness(1.08); }
+.st-play.is-off { background: var(--sea-soft); color: var(--muted); font-weight: 400; }
+
+.st-sentinel { display: grid; justify-items: center; gap: 8px; padding: 18px 0 6px; min-height: 40px; }
+.st-status { font-size: 13px; color: var(--muted); }
+.st-morebtn[hidden] { display: none; }
+.st-empty { grid-column: 1 / -1; text-align: center; color: var(--muted); padding: 24px 0; }
+.st-note { font-size: 12px; color: var(--muted); margin: 10px 0 0; }
+
+.st-import p { margin: 8px 0; }
+.st-steps { margin: 6px 0 10px; padding-left: 20px; font-size: 14px; color: #44606f; }
+.st-code { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
+.st-code code { flex: 1 1 260px; min-width: 0; padding: 8px 10px; border-radius: 10px; background: #f3f1e8; font-size: 12px; word-break: break-all; }
+.st-text { width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; font: 12px/1.5 ui-monospace, Menlo, Consolas, monospace; color: var(--ink); background: #fff; resize: vertical; }
+.st-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; align-items: center; }
+.st-file { cursor: pointer; }

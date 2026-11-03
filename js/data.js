@@ -39,6 +39,14 @@ window.ISLAND_DATA = {
         ],
       },
     },
+    // 夥伴的故事：串接團隊工具站的 /api/content（取 sharers），一次顯示 pageSize 則，捲到底再載入。
+    // 這個 API 需要登入，而且不允許其他網域讀取：從別的網址（例如 github.io）連會失敗，頁面會改成讓使用者匯入自己的資料。
+    // 要即時連線，就把本站放在同一個網域下，並把 endpoint 改成 '/api/content'。repo 裡不放任何真實故事。
+    stories: {
+      endpoint: 'https://jennyteam-toolbox.netlify.app/api/content',
+      pageSize: 10,
+      disclaimer: '故事是夥伴個人的經驗整理，不代表一定會有相同結果，也不構成任何收入、獎金或功效的承諾。內容屬於團隊內部學習資料，請勿外流或轉貼公開。',
+    },
     disclaimer: '本站內容為一般芳香知識與使用情境分享，不是醫療建議，也不能取代醫師或合格芳療師的意見。',
   },
 
@@ -369,6 +377,22 @@ window.ISLAND_DATA = {
           { icon: '🧾', h: '3. 產生方案表', p: '預覽後輸出成圖片、Excel 或 HTML，分享給想了解的人。' },
         ], tip: '資料只存在這個瀏覽器，不會上傳。方案表會附上「價格與 PV 以官方公告為準」的聲明，也請不要加入收入或獎金的承諾。' },
         { type: 'tool', tool: 'plan', title: '方案表產生器' },
+      ],
+    },
+    {
+      id: 'stories', kind: 'station', order: 9, group: 'share', sprite: 'assets/buildings/stories.png', name: '夥伴的故事', emoji: '📣',
+      x: 6, y: 8, door: { x: 7, y: 8 }, after: 'share', accent: '#2f9e8f', decor: { x: 5, y: 8, color: '#5cc2b3' },
+      summary: '讀讀其他夥伴怎麼開始、遇到什麼卡關、怎麼走過來。一次 10 則，往下捲就載入更多。',
+      learn: ['看看跟你情況相似的夥伴怎麼做', '用標籤與關鍵字找到想看的故事', '點進影片，直接跳到那位夥伴的段落'],
+      style: { w: 0.72, d: 0.72, h: 46, wall: '#d8efe9', roof: '#2f9e8f', roofType: 'flat',
+        win: { cols: 2, rows: 1, color: '#bfe8ff' }, awning: ['#2f9e8f', '#ffffff'], door: '#3b6f66' },
+      pages: [
+        { type: 'info', title: '怎麼讀別人的故事', items: [
+          { icon: '🔎', h: '找像你的人', p: '用上方搜尋或點標籤（族群、痛點、技能），先看跟你處境相近的夥伴。' },
+          { icon: '📖', h: '先看重點，再看全文', p: '每則故事先給一句開場、金句與「教你什麼」，有興趣再展開完整故事。' },
+          { icon: '▶️', h: '回到影片原段', p: '「看影片」會直接跳到那位夥伴開始分享的時間點。' },
+        ], tip: '故事是夥伴自己的經驗，不是每個人都會一樣；請學做法與心態，不要拿來向別人承諾收入或功效。內容屬於團隊內部學習，請勿外流。' },
+        { type: 'tool', tool: 'stories', title: '夥伴的故事' },
       ],
     },
   ],

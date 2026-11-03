@@ -192,8 +192,10 @@
     $('#mBody').scrollTop = 0;
     if (p.type === 'tool' && p.tool === 'dilution') dilutionCalc();
     const isPlan = p.type === 'tool' && p.tool === 'plan';
-    $('.modal-card').classList.toggle('is-wide', isPlan);
+    const isStories = p.type === 'tool' && p.tool === 'stories';
+    $('.modal-card').classList.toggle('is-wide', isPlan || isStories);
     if (isPlan) Plan.mount($('#planRoot'), member, C.plan);
+    if (isStories) Stories.mount($('#storiesRoot'), member, C.stories);
     $('#mPrev').hidden = false; $('#mPrev').disabled = L.page === 0;
     $('#mNext').textContent = last ? (S.done[b.id] ? '完成複習' : '完成學習 +' + C.reward + ' 💧') : '下一步';
     $('#mNext').disabled = !pageOk(p, L.page);
@@ -249,6 +251,7 @@
     if (t === 'recipes') return recipesHtml();
     if (t === 'diy') return diyHtml();
     if (t === 'plan') return '<div id="planRoot"></div>';
+    if (t === 'stories') return '<div id="storiesRoot"></div>';
     return '';
   }
 
