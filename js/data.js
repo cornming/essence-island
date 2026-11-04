@@ -27,7 +27,24 @@ window.ISLAND_DATA = {
     // 在線感：看到其他夥伴的匿名小人，並顯示「現在有 N 位夥伴在線」。只傳暱稱與島上位置，不傳會員編號。
     // firebaseUrl 留空 = 只能看到同一個瀏覽器的其他分頁（示範用）；填 Firebase Realtime Database 的網址 = 所有夥伴互相看得到，
     // 資料庫規則見 docs/presence-rules.json。room 可以分隊伍（不同 room 互相看不到）。
-    presence: { enabled: true, firebaseUrl: 'https://essence-island-default-rtdb.asia-southeast1.firebasedatabase.app', room: 'main' },
+    presence: {
+      enabled: true, firebaseUrl: 'https://essence-island-default-rtdb.asia-southeast1.firebasedatabase.app', room: 'main',
+      // 聊天：表情與短語是固定選項（對方只送 id，畫面上顯示的是自己這邊的文字，所以不能被改成別的話）。
+      // 自由輸入預設關閉，使用者在筆記小屋自己打開；送出與接收都會擋連結、帳號、電話，以及 blockWords 裡的字。
+      // allowFree: false = 整站關掉自由輸入（筆記小屋的選項與輸入框都會消失，收到的自由輸入也不顯示），只剩表情與短語。
+      chat: {
+        bubbleMs: 6000, gapMs: 2500, freeMax: 30, allowFree: true,
+        emotes: [
+          { id: 'wave', e: '👋' }, { id: 'smile', e: '😊' }, { id: 'leaf', e: '🌿' }, { id: 'drop', e: '💧' },
+          { id: 'spark', e: '✨' }, { id: 'heart', e: '❤️' }, { id: 'thumb', e: '👍' }, { id: 'party', e: '🎉' },
+        ],
+        phrases: [
+          { id: 'hi', t: '哈囉！' }, { id: 'morning', t: '早安！' }, { id: 'night', t: '晚安～' }, { id: 'cheer', t: '加油！' },
+          { id: 'smell', t: '這瓶好香～' }, { id: 'diffuse', t: '今天擴什麼香？' }, { id: 'thanks', t: '謝謝你！' }, { id: 'learn', t: '一起學習吧！' },
+        ],
+        blockWords: ['賺錢', '收入', '月入', '被動收入', '躺著賺', '治療', '治癒', '療效', '根治', '保證', '包好', '獎金'],
+      },
+    },
     // 夥伴的故事：串接團隊工具站的 /api/content（取 sharers），一次顯示 pageSize 則，捲到底再載入。
     // 這個 API 需要登入，而且不允許其他網域讀取：從別的網址（例如 github.io）連會失敗，頁面會改成讓使用者匯入自己的資料。
     // 要即時連線，就把本站放在同一個網域下，並把 endpoint 改成 '/api/content'。repo 裡不放任何真實故事。

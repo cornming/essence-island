@@ -24,7 +24,7 @@
   /* ---------- 存檔 ---------- */
   const fresh = () => ({
     drops: 0, done: {}, days: { n: 0, last: '' }, fav: '', note: '', selectedOnce: false, tour: false,
-    inv: {}, placed: [], ach: {}, best: {}, streak: { n: 0, last: '' }, presence: { on: true, nick: '' },
+    inv: {}, placed: [], ach: {}, best: {}, streak: { n: 0, last: '' }, presence: { on: true, nick: '', free: false },
     daily: { date: '', prog: {}, claimed: {}, bonus: false, played: {}, gameDrops: 0, talked: {} },
     stats: { earned: 0, bought: 0, games: 0, talks: 0 },
   });
@@ -476,6 +476,7 @@
         L.checks[L.page] = Array.from(on); renderLesson();
       } else if (e.target.id === 'dlMl' || e.target.id === 'dlPct') dilutionCalc();
       else if (e.target.id === 'prVisible') { S.presence.on = e.target.checked; save(); Presence.setVisible(S.presence.on); paintOnline(); }
+      else if (e.target.id === 'prFree') { S.presence.free = e.target.checked; save(); Chat.refresh(true); }
       else if (e.target.id === 'prNick') {
         const n = Presence.clean(e.target.value); if (n) S.presence.nick = n;
         e.target.value = S.presence.nick; save(); Presence.setNick(S.presence.nick);
@@ -556,11 +557,14 @@
         '<h3>在線狀態</h3><label class="pr-row"><input type="checkbox" id="prVisible"> 讓其他夥伴看到我在線上</label>' +
         '<label class="pl-label">我的暱稱（最多 10 字）<input id="prNick" maxlength="10" autocomplete="off"></label>' +
         '<p class="note">只會分享暱稱和你在島上的位置，不含會員編號，也不含學習進度。關閉後不會連線，也看不到別人。</p>' +
+        (C.presence.chat && C.presence.chat.allowFree === false ? '' :
+          '<label class="pr-row"><input type="checkbox" id="prFree"> 開啟自由輸入聊天（預設關閉）</label>' +
+          '<p class="note">打開後可以打一句話（30 字內），也會看到別人打的字；表情和短語不受這個設定影響。連結、帳號、電話，以及收入、獎金、功效相關的字會被擋下。說的話只會變成頭上的泡泡，不留紀錄。</p>') +
         '<h3>我的筆記</h3><textarea id="noteArea" placeholder="記下喜歡的配方、使用感受、下次想試的組合……" aria-label="我的筆記"></textarea>' +
         '<button type="button" class="danger-link" data-act="reset">清除我的學習進度</button>';
     }
     $('#mBody').innerHTML = '<div class="tool"><div class="pl-steps">' + tabs + '</div>' + body + '</div>';
-    if (L.ntab === 'me') { $('#noteArea').value = S.note; $('#prVisible').checked = S.presence.on; $('#prNick').value = S.presence.nick; }
+    if (L.ntab === 'me') { $('#noteArea').value = S.note; $('#prVisible').checked = S.presence.on; $('#prNick').value = S.presence.nick; if ($('#prFree')) $('#prFree').checked = !!S.presence.free; }
   }
 
   /* --- 水滴市集 / 遊樂亭 --- */
@@ -859,23 +863,29 @@
       S.presence.nick = Presence.clean(oil + w); save();
     }
     Presence.init({ config: C.presence, dims: World.size(), nick: S.presence.nick, x: sim.fx, y: sim.fy, visible: S.presence.on });
+    Chat.init({ config: C.presence.chat, panel: $('#onlinePanel'), chip: $('#hudOnline'), free: () => !!S.presence.free, nick: () => S.presence.nick });
   }
   let onlineTxt = '';
   function paintOnline() {
     const m = Presence.mode(), n = Presence.count(), chip = $('#hudOnline');
     const show = m === 'firebase' || (m === 'local' && n > 1); // 沒設定即時服務時，只有看到其他分頁才顯示，避免老是顯示「1 位」
     chip.hidden = !show;
-    if (!show) return;
+    if (!show) { if (Chat.isOpen()) Chat.close(); return; }
     const txt = '👥 ' + n + ' 位夥伴在線';
     if (txt !== onlineTxt) { onlineTxt = txt; $('#hudOnlineTxt').textContent = txt; }
-    chip.title = (m === 'local' ? '尚未設定即時服務，目前只看得到這個瀏覽器的其他分頁。' + String.fromCharCode(10) : '') + '在線：你' + Presence.names().map((x) => '、' + x).join('');
+    chip.title = (m === 'local' ? '尚未設定即時服務，目前只看得到這個瀏覽器的其他分頁。' + String.fromCharCode(10) : '') + '點一下看誰在線、打招呼';
+    Chat.refresh();
   }
 
   /* ---------- 啟動 ---------- */
   function boot() {
     const canvas = $('#island');
     World.init(canvas, D);
-    Life.init(D, { placed: () => S.placed, ghost: () => ghost, item: shopById, peers: () => Presence.peers() });
+    Life.init(D, {
+      placed: () => S.placed, ghost: () => ghost, item: shopById, peers: () => Presence.peers(),
+      peerSay: (p) => Chat.say(p),
+      me: () => { const s = Chat.self(); return s ? { fx: sim.fx, fy: sim.fy, say: s } : null; },
+    });
     const wp = params.get('weather');
     if (wp && Life.info(wp)) { Life.setWeather(wp, 0); Life.lockWeather(true); }
     bindCanvas(canvas); bindUi(); bindGate(); bindModal();

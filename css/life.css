@@ -130,5 +130,40 @@
 
 /* 在線感 */
 .chip[hidden] { display: none; }
+/* 在線名單與聊天面板：放在島的左下角（左上角是 HUD，右下角是縮放鈕） */
+.op {
+  position: absolute; left: 12px; bottom: 40px; z-index: 5; width: min(318px, calc(100% - 72px)); max-height: calc(100% - 118px); overflow: auto;
+  padding: 12px 14px; border-radius: 16px; background: rgba(255, 255, 255, .96); backdrop-filter: blur(6px);
+  box-shadow: 0 6px 22px rgba(0, 0, 0, .2); touch-action: pan-y; font-size: 14px;
+}
+.op[hidden] { display: none; }
+.op-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.op-title { font-size: 14px; color: var(--sea-deep); }
+.op-x { border: 0; background: none; font-size: 15px; color: var(--muted); padding: 4px 8px; border-radius: 8px; }
+.op-x:hover { background: #f1f1ec; }
+.op-list { list-style: none; margin: 0 0 8px; padding: 0; max-height: 108px; overflow: auto; }
+.op-row { display: flex; align-items: center; gap: 8px; padding: 3px 0; }
+.op-dot { color: #4cbf6a; font-size: 10px; }
+.op-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.op-row.is-muted .op-name { color: var(--muted); text-decoration: line-through; }
+.op-mute { border: 0; background: none; font-size: 15px; padding: 2px 6px; border-radius: 8px; }
+.op-mute:hover { background: #f1f1ec; }
+.op-empty { color: var(--muted); font-size: 13px; }
+.op-chat { border-top: 1px solid var(--line); padding-top: 8px; }
+.op-chat.is-off { opacity: .55; }
+.op-emotes { display: flex; flex-wrap: wrap; gap: 4px; }
+.op-emote { width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--line); background: #fff; font-size: 19px; line-height: 1; padding: 0; }
+.op-phrases { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+.op-phrase { padding: 5px 10px; border-radius: 999px; border: 1px solid var(--line); background: #fff; font-size: 13px; }
+.op-emote:hover, .op-phrase:hover { border-color: var(--sea); background: var(--sea-soft); }
+.op.is-cool .op-emote, .op.is-cool .op-phrase, .op.is-cool .op-free .btn { opacity: .45; pointer-events: none; }
+.op-free { display: flex; gap: 6px; margin-top: 8px; }
+.op-free[hidden] { display: none; }
+.op-free input { flex: 1; min-width: 0; padding: 7px 10px; border: 1px solid var(--line); border-radius: 10px; font: inherit; font-size: 14px; }
+.op-free input:focus { outline: 2px solid var(--sea); outline-offset: 1px; }
+.op-err { min-height: 0; margin: 6px 0 0; font-size: 12px; color: #a23f27; }
+.op-err:empty { display: none; }
+.op-note { margin: 6px 0 0; font-size: 12px; color: var(--muted); line-height: 1.5; }
+@media (max-width: 560px) { .op { bottom: 36px; width: calc(100% - 24px); max-height: calc(100% - 100px); } .op-emote { width: 40px; height: 40px; } }
 .pr-row { display: flex; align-items: center; gap: 8px; margin: 6px 0; font-size: 14px; }
 .pr-row input { width: 18px; height: 18px; }

@@ -10,7 +10,7 @@
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="css/oil.css?v=3">
   <link rel="stylesheet" href="css/stories.css?v=1">
-  <link rel="stylesheet" href="css/life.css?v=2">
+  <link rel="stylesheet" href="css/life.css?v=3">
   <link rel="stylesheet" href="css/tour.css?v=1">
 </head>
 <body>
@@ -63,9 +63,11 @@
             <span class="bar"><i id="hudProg"></i></span>
           </div>
           <div class="chip"><span class="chip-ico">📅</span><b id="hudDays">0 / 30 天</b></div>
-          <div class="chip" id="hudOnline" role="status" hidden><b id="hudOnlineTxt"></b></div>
+          <div class="chip chip-act" id="hudOnline" role="button" tabindex="0" aria-expanded="false" aria-controls="onlinePanel" hidden><b id="hudOnlineTxt"></b></div>
           <div class="chip chip-act" id="hudWeather" role="button" tabindex="0" title="點一下換天氣" aria-label="天氣與時間，點一下換天氣"><b id="hudWeatherTxt">☀️ 晴天 · 白天</b></div>
         </div>
+
+        <div class="op" id="onlinePanel" role="dialog" aria-label="在線的夥伴與聊天" hidden></div>
 
         <div class="zoom" aria-label="縮放">
           <button type="button" id="zoomIn" aria-label="放大">＋</button>
@@ -124,18 +126,19 @@
 
   <div class="toasts" id="toasts" aria-live="polite"></div>
 
-  <script src="js/data.js?v=12"></script>
+  <script src="js/data.js?v=13"></script>
   <script src="js/world.js?v=9"></script>
   <script src="js/audio.js?v=9"></script>
   <script src="js/catalog.js?v=1"></script>
   <script src="js/plan.js?v=7"></script>
   <script src="js/stories.js?v=6"></script>
   <script src="js/quest.js?v=7"></script>
-  <script src="js/life.js?v=10"></script>
+  <script src="js/life.js?v=11"></script>
   <script src="js/shop.js?v=9"></script>
   <script src="js/play.js?v=7"></script>
   <script src="js/tour.js?v=9"></script>
-  <script src="js/presence.js?v=10"></script>
-  <script src="js/app.js?v=10"></script>
+  <script src="js/presence.js?v=12"></script>
+  <script src="js/chat.js?v=1"></script>
+  <script src="js/app.js?v=11"></script>
 </body>
 </html>

@@ -245,6 +245,21 @@
     c.fillStyle = '#1f3b4d'; lines.forEach((l, i) => c.fillText(l, x, top + 6 + 8 + th + i * 16));
   }
 
+  // 夥伴說的話：表情是一個小圓角方塊裡放大的 emoji，其他是一般對話泡泡；最後 0.7 秒淡出
+  function sayBubble(c, s, x, y) {
+    c.save(); c.globalAlpha = Math.max(0, Math.min(1, s.left / 700));
+    if (s.kind === 'emote') {
+      const w = 40, top = y - w - 10;
+      c.shadowColor = 'rgba(0,0,0,.2)'; c.shadowBlur = 6; c.shadowOffsetY = 2; c.fillStyle = '#fff';
+      c.beginPath(); if (c.roundRect) c.roundRect(x - w / 2, top, w, w, 13); else c.rect(x - w / 2, top, w, w); c.fill();
+      c.beginPath(); c.moveTo(x - 5, top + w - 1); c.lineTo(x, top + w + 8); c.lineTo(x + 5, top + w - 1); c.closePath(); c.fill();
+      c.shadowColor = 'transparent';
+      c.font = '24px ' + EMOJI_FONT; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = '#1f3b4d';
+      c.fillText(s.text, x, top + w / 2 + 1);
+    } else bubble(c, s.text, x, y);
+    c.restore();
+  }
+
   function over(t) {
     const c = ctx();
     // 魚：躍出水面再落下，留下水圈
@@ -287,6 +302,15 @@
       const p = iso(n.fx + 0.5, n.fy + 0.5, 0);
       bubble(c, n.say.text, p.x, p.y - 36, n.name + ' · ' + n.role);
     });
+
+    // 夥伴與自己說的話
+    (hook.peers ? hook.peers() : []).forEach((p) => {
+      const s = hook.peerSay && hook.peerSay(p); if (!s) return;
+      const q = iso(p.ox + 0.5, p.oy + 0.5, 0);
+      sayBubble(c, s, q.x, q.y - 54);
+    });
+    const me = hook.me && hook.me();
+    if (me && me.say) { const q = iso(me.fx + 0.5, me.fy + 0.5, 0); sayBubble(c, me.say, q.x, q.y - 62); }
 
     // 摸小動物冒出的愛心
     pops.forEach((t0, key) => {

@@ -11,6 +11,8 @@
             "x": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 20" },
             "y": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 20" },
             "t": { ".validate": "newData.val() == now" },
+            "c": { ".validate": "newData.isString() && newData.val().length <= 40 && newData.val().matches(/^[epf]:.+/)" },
+            "k": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000000" },
             "$other": { ".validate": false }
           }
         }
