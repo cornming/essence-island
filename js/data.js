@@ -18,26 +18,11 @@ window.ISLAND_DATA = {
     verifyMember: async () => true,
     // 背景音樂：src 留空 = 即時產生的舒緩環境音樂；填音檔路徑（如 'assets/audio/bgm.mp3'）= 改播該檔並循環
     bgm: { src: '', volume: 0.35 },
-    // 方案工坊：網站不內建任何真實的價格或 PV。使用者在頁面上匯入自己的價目表，資料只存在他的瀏覽器。
-    // 下面的 sample 是「假資料」，只用來示範格式與試玩，數字都不是真實價格。
+    // 方案工坊：價目（品名、批發價、零售價、PV）內建在 js/catalog.js，來自悠樂芳產品訂購單 ©2026 v12，使用者不需要匯入。
+    // 價目更新時改 js/catalog.js；這裡只放預設級距與附在方案表上的聲明。
     plan: {
       defaultTiers: [100, 200],
-      disclaimer: '非官方工具。價格與 PV 以官方公告為準，本方案表僅供個人整理與分享參考，不代表任何收入或獎金的承諾。',
-      sample: {
-        currency: 'NT$', source: '範例資料（假資料，不是真實價格）', updated: '2000-01-01',
-        items: [
-          { sku: 'SAMPLE-01', name: '範例商品 A', ws: 450, pv: 9, rt: 590, cat: '範例' },
-          { sku: 'SAMPLE-02', name: '範例商品 B', ws: 500, pv: 10, rt: 650, cat: '範例' },
-          { sku: 'SAMPLE-03', name: '範例商品 C', ws: 800, pv: 16, rt: 1050, cat: '範例' },
-          { sku: 'SAMPLE-04', name: '範例商品 D', ws: 900, pv: 18, rt: 1180, cat: '範例' },
-          { sku: 'SAMPLE-05', name: '範例商品 E', ws: 1200, pv: 25, rt: 1560, cat: '範例' },
-          { sku: 'SAMPLE-06', name: '範例商品 F', ws: 1500, pv: 30, rt: 1950, cat: '範例' },
-          { sku: 'SAMPLE-07', name: '範例商品 G', ws: 2000, pv: 40, rt: 2600, cat: '範例' },
-          { sku: 'SAMPLE-08', name: '範例商品 H', ws: 2500, pv: 50, rt: 3250, cat: '範例' },
-          { sku: 'SAMPLE-09', name: '範例商品 I', ws: 3000, pv: 60, rt: 3900, cat: '範例' },
-          { sku: 'SAMPLE-10', name: '範例贈品 J（無 PV）', ws: 100, pv: 0, rt: 130, cat: '範例' },
-        ],
-      },
+      disclaimer: '非官方工具。價格與 PV 依悠樂芳產品訂購單整理，實際以官方公告為準，本方案表僅供個人整理與分享參考，不代表任何收入或獎金的承諾。',
     },
     // 在線感：看到其他夥伴的匿名小人，並顯示「現在有 N 位夥伴在線」。只傳暱稱與島上位置，不傳會員編號。
     // firebaseUrl 留空 = 只能看到同一個瀏覽器的其他分頁（示範用）；填 Firebase Realtime Database 的網址 = 所有夥伴互相看得到，
@@ -441,16 +426,16 @@ window.ISLAND_DATA = {
     {
       id: 'plan', kind: 'station', order: 8, group: 'share', sprite: 'assets/buildings/plan.png', name: '方案工坊', emoji: '🧾',
       x: 8, y: 10, door: { x: 7, y: 10 }, after: 'share', accent: '#c9573f', decor: { x: 9, y: 10, color: '#f2b84b' },
-      summary: '匯入你自己的價目表，設定 PV 級距與產品組合，產生可以分享的客製方案表。',
-      learn: ['匯入自己的價目資料（只留在你的瀏覽器）', '設定 PV 級距、組合商品，並自動調整數量', '輸出成圖片、Excel 或 HTML'],
+      summary: '用內建的產品價目（品名、PV、批發價、零售價），設定 PV 級距與產品組合，產生可以分享的客製方案表。',
+      learn: ['從內建價目挑商品，不用自己匯入', '設定 PV 級距、組合商品，並自動調整數量', '輸出成圖片、Excel 或 HTML'],
       style: { w: 0.72, d: 0.72, h: 58, wall: '#e3d9f6', roof: '#c9573f', roofType: 'flat',
         win: { cols: 2, rows: 2, color: '#ffd7f0' }, door: '#5d4a9c' },
       pages: [
         { type: 'info', title: '方案表怎麼做', items: [
-          { icon: '📥', h: '1. 匯入價目', p: '把你手上的官方價目表（品名、批發價、PV、零售價）貼上或選檔匯入。網站沒有內建任何真實價格或 PV。' },
+          { icon: '📋', h: '1. 價目已經內建', p: '品名、PV、批發價、零售價都來自悠樂芳產品訂購單（©2026 v12），共 226 項，包含入門套裝與忠誠獎勵套裝，不用自己匯入。' },
           { icon: '🎯', h: '2. 設定級距與組合', p: '決定要做哪幾個 PV 級距，替每個級距挑商品；可以讓系統自動調整數量，剛好湊到目標 PV。' },
           { icon: '🧾', h: '3. 產生方案表', p: '預覽後輸出成圖片、Excel 或 HTML，分享給想了解的人。' },
-        ], tip: '資料只存在這個瀏覽器，不會上傳。方案表會附上「價格與 PV 以官方公告為準」的聲明，也請不要加入收入或獎金的承諾。' },
+        ], tip: '你的方案設定只存在這個瀏覽器，不會上傳。價目是某一版訂購單的快照，價格與 PV 以官方公告為準；方案表會附上這句聲明，也請不要加入收入或獎金的承諾。' },
         { type: 'tool', tool: 'plan', title: '方案表產生器' },
       ],
     },
